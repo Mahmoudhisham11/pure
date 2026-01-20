@@ -1,5 +1,10 @@
 [build]
   command = "npm run build"
+  # لا نحدد publish directory - الـ plugin يتعامل معه تلقائياً
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# إعدادات البيئة (اختياري)
+[build.environment]
+  NODE_VERSION = "18"
