@@ -5,6 +5,6 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# إعدادات البيئة (اختياري)
+# إعدادات البيئة
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
