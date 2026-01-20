@@ -1,8 +1,8 @@
 // Configuration constants
 export const CONFIG = {
-  ADMIN_EMAILS: ['mahmoud'],
+  ADMIN_EMAILS: ['بيور'],
   DISCOUNT_PASSWORDS: {
-    FULL_ACCESS: '351992',
+    FULL_ACCESS: '123456',
     LIMITED_ACCESS: '2298605522',
     LIMITED_DISCOUNT_AMOUNT: 200
   },
