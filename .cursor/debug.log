@@ -1,0 +1,6 @@
+{"location":"app/settings/page.jsx:313","message":"Before updateConfig call","data":{"fullAccessPassword":"1234","hasAppConfig":true},"timestamp":1769108954574,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"app/settings/page.jsx:318","message":"After updateConfig call","data":{"updateSuccess":true,"typeOfUpdateSuccess":"boolean"},"timestamp":1769108955611,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"app/settings/page.jsx:319","message":"Checking success function","data":{"successType":"function","isFunction":true},"timestamp":1769108955612,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"app/settings/page.jsx:313","message":"Before updateConfig call","data":{"fullAccessPassword":"5050","hasAppConfig":true},"timestamp":1769108959865,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"app/settings/page.jsx:318","message":"After updateConfig call","data":{"updateSuccess":true,"typeOfUpdateSuccess":"boolean"},"timestamp":1769108960300,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"app/settings/page.jsx:319","message":"Checking success function","data":{"successType":"function","isFunction":true},"timestamp":1769108960300,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}

@@ -38,9 +38,12 @@ import SuspendedInvoicesModal from "./Modals/SuspendedInvoicesModal";
 import EmployeeStatsModal from "./Modals/EmployeeStatsModal";
 import { useInvoiceReturn } from "./hooks/useInvoiceReturn";
 import { FaBookmark, FaBook } from "react-icons/fa";
+import { useAppConfig } from "@/hooks/useAppConfig";
 
 function MainContent() {
   const { success, error: showError, warning } = useNotification();
+  // Load app config to update CONFIG dynamically
+  useAppConfig();
   const [openSalles, setOpenSalles] = useState(false);
   const [isHidden, setIsHidden] = useState(() => {
     if (typeof window === "undefined") return true;
@@ -202,7 +205,7 @@ function MainContent() {
   const handlePasswordConfirm = useCallback((password) => {
     setShowPasswordModal(false);
     
-    const EYE_PASSWORD = "2468";
+    const EYE_PASSWORD = CONFIG.DISCOUNT_PASSWORDS?.EYE_PASSWORD || "2468";
     
     if (password !== EYE_PASSWORD) {
       showError("❌ كلمة المرور غير صحيحة");

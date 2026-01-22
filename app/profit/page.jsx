@@ -34,18 +34,11 @@ function ProfitContent() {
   const [profit, setProfit] = useState(0);
   const [grossProfit, setGrossProfit] = useState(0);
   const [netProfit, setNetProfit] = useState(0);
-  const [mostafaBalance, setMostafaBalance] = useState(0);
-  const [midoBalance, setMidoBalance] = useState(0);
-  const [doubleMBalance, setDoubleMBalance] = useState(0);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [isHidden, setIsHidden] = useState(true);
   const [loading, setLoading] = useState(true);
 
-  const [showPopup, setShowPopup] = useState(false);
-  const [withdrawPerson, setWithdrawPerson] = useState("");
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [withdrawNotes, setWithdrawNotes] = useState("");
   const [showPayPopup, setShowPayPopup] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payPerson, setPayPerson] = useState("");
@@ -53,7 +46,6 @@ function ProfitContent() {
   const [showAddCashPopup, setShowAddCashPopup] = useState(false);
   const [addCashAmount, setAddCashAmount] = useState("");
   const [addCashNotes, setAddCashNotes] = useState("");
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Get shop and hidden state
@@ -271,10 +263,7 @@ function ProfitContent() {
         cashTotal: 0, 
         profit: 0, 
         grossProfit: 0,
-        netProfit: 0,
-        mostafa: 0, 
-        mido: 0, 
-        doubleM: 0 
+        netProfit: 0
       };
 
     const from = dateFrom
@@ -369,17 +358,11 @@ function ProfitContent() {
     );
     remainingProfit -= totalMasrofatT;
 
-    let mostafaSum = 0,
-      midoSum = 0,
-      doubleMSum = 0;
     filteredWithdraws.forEach((w) => {
       const remaining = Number(w.amount || 0) - Number(w.paid || 0);
       if (w.person !== "الخزنة") {
         remainingProfit -= remaining;
       }
-      if (w.person === "مصطفى") mostafaSum += remaining;
-      if (w.person === "ميدو") midoSum += remaining;
-      if (w.person === "دبل M") doubleMSum += remaining;
     });
 
     const returnedProfit = filteredDaily.reduce(
@@ -393,9 +376,6 @@ function ProfitContent() {
       profit: profitValue, // الربح = مجموع أرباح كل فاتورة
       grossProfit: grossProfitValue,
       netProfit: netProfitValue < 0 ? 0 : netProfitValue, // صافي الربح = مجموع أرباح الفواتير - المصروفات (بدون فاتورة مرتجع)
-      mostafa: mostafaSum < 0 ? 0 : mostafaSum,
-      mido: midoSum < 0 ? 0 : midoSum,
-      doubleM: doubleMSum < 0 ? 0 : doubleMSum,
     };
   }, [
     dateFrom,
@@ -414,9 +394,6 @@ function ProfitContent() {
     setProfit(calculatedTotals.profit);
     setGrossProfit(calculatedTotals.grossProfit);
     setNetProfit(calculatedTotals.netProfit);
-    setMostafaBalance(calculatedTotals.mostafa);
-    setMidoBalance(calculatedTotals.mido);
-    setDoubleMBalance(calculatedTotals.doubleM);
   }, [calculatedTotals]);
 
   const toggleHidden = useCallback(() => {
@@ -426,56 +403,6 @@ function ProfitContent() {
       return newState;
     });
   }, []);
-
-  const handleWithdraw = useCallback(async () => {
-    if (!withdrawPerson || !withdrawAmount) {
-      showError("اختر الشخص واكتب المبلغ");
-      return;
-    }
-    const amount = Number(withdrawAmount);
-    if (amount <= 0) {
-      showError("المبلغ غير صالح");
-      return;
-    }
-    if (amount > cashTotal) {
-      showError("رصيد الخزنة غير كافي");
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      const newDate = new Date();
-      await addDoc(collection(db, "withdraws"), {
-        shop,
-        person: withdrawPerson,
-        amount,
-        notes: withdrawNotes,
-        date: formatDate(newDate),
-        createdAt: Timestamp.fromDate(newDate),
-        paid: 0,
-      });
-
-      success("✅ تم إضافة السحب بنجاح");
-      setWithdrawPerson("");
-      setWithdrawAmount("");
-      setWithdrawNotes("");
-      setShowPopup(false);
-    } catch (error) {
-      console.error("Error adding withdraw:", error);
-      showError("حدث خطأ أثناء إضافة السحب");
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [
-    withdrawPerson,
-    withdrawAmount,
-    withdrawNotes,
-    cashTotal,
-    shop,
-    formatDate,
-    success,
-    showError,
-  ]);
 
   const handleAddCash = useCallback(async () => {
     const amount = Number(addCashAmount);
@@ -508,28 +435,6 @@ function ProfitContent() {
       setIsProcessing(false);
     }
   }, [addCashAmount, addCashNotes, shop, formatDate, success, showError]);
-
-  const handleResetProfit = useCallback(async () => {
-    setIsProcessing(true);
-    try {
-      const now = Timestamp.now();
-      await addDoc(collection(db, "reset"), {
-        shop,
-        resetAt: now,
-      });
-
-      const nowDate = new Date();
-      localStorage.setItem("resetAt", nowDate.toISOString());
-      setResetAt(nowDate);
-      success("✅ تم تصفير الأرباح والأرصدة بنجاح");
-      setShowResetConfirm(false);
-    } catch (error) {
-      console.error("Error resetting profit:", error);
-      showError("حدث خطأ أثناء تصفير الأرباح");
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [shop, success, showError]);
 
   const handleDeleteWithdraw = useCallback(
     async (id) => {
@@ -628,12 +533,6 @@ function ProfitContent() {
             <button onClick={toggleHidden} className={styles.toggleBtn}>
               {isHidden ? "إظهار الأرقام" : "إخفاء الأرقام"}
             </button>
-            <button
-              onClick={() => setShowResetConfirm(true)}
-              className={styles.resetBtn}
-            >
-              تصفير الأرباح
-            </button>
           </div>
         </div>
 
@@ -680,35 +579,9 @@ function ProfitContent() {
             </span>
           </div>
         </div>
-        <div className={styles.summaryCards}>
-          <div className={styles.summaryCard}>
-            <span className={styles.summaryLabel}>مصطفى</span>
-            <span className={styles.summaryValue}>
-              {isHidden ? "*****" : mostafaBalance.toFixed(2)} EGP
-            </span>
-          </div>
-          <div className={styles.summaryCard}>
-            <span className={styles.summaryLabel}>ميدو</span>
-            <span className={styles.summaryValue}>
-              {isHidden ? "*****" : midoBalance.toFixed(2)} EGP
-            </span>
-          </div>
-          <div className={styles.summaryCard}>
-            <span className={styles.summaryLabel}>دبل M</span>
-            <span className={styles.summaryValue}>
-              {isHidden ? "*****" : doubleMBalance.toFixed(2)} EGP
-            </span>
-          </div>
-        </div>
 
         {/* Action Buttons */}
         <div className={styles.actionButtons}>
-          <button
-            onClick={() => setShowPopup(true)}
-            className={styles.withdrawBtn}
-          >
-            سحب
-          </button>
           <button
             onClick={() => setShowAddCashPopup(true)}
             className={styles.addCashBtn}
@@ -792,76 +665,6 @@ function ProfitContent() {
           </table>
         </div>
       </div>
-
-      {/* Withdraw Modal */}
-      {showPopup && (
-        <div
-          className={styles.modalOverlay}
-          onClick={() => setShowPopup(false)}
-        >
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h3>عملية سحب</h3>
-              <button
-                className={styles.closeBtn}
-                onClick={() => setShowPopup(false)}
-              >
-                ×
-              </button>
-            </div>
-            <div className={styles.modalContent}>
-              <div className={styles.inputContainer}>
-                <label>اختر الشخص:</label>
-                <select
-                  value={withdrawPerson}
-                  onChange={(e) => setWithdrawPerson(e.target.value)}
-                  className={styles.selectInput}
-                >
-                  <option value="">اختر الشخص</option>
-                  <option value="مصطفى">مصطفى</option>
-                  <option value="ميدو">ميدو</option>
-                  <option value="دبل M">دبل M</option>
-                </select>
-              </div>
-              <div className={styles.inputContainer}>
-                <label>المبلغ:</label>
-                <input
-                  type="number"
-                  placeholder="المبلغ"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  className={styles.modalInput}
-                />
-              </div>
-              <div className={styles.inputContainer}>
-                <label>ملاحظات:</label>
-                <input
-                  type="text"
-                  placeholder="ملاحظات"
-                  value={withdrawNotes}
-                  onChange={(e) => setWithdrawNotes(e.target.value)}
-                  className={styles.modalInput}
-                />
-              </div>
-            </div>
-            <div className={styles.modalActions}>
-              <button
-                onClick={handleWithdraw}
-                className={styles.confirmBtn}
-                disabled={isProcessing}
-              >
-                {isProcessing ? "جاري المعالجة..." : "تأكيد"}
-              </button>
-              <button
-                onClick={() => setShowPopup(false)}
-                className={styles.cancelBtn}
-              >
-                إلغاء
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Add Cash Modal */}
       {showAddCashPopup && (
@@ -972,17 +775,6 @@ function ProfitContent() {
         </div>
       )}
 
-      {/* Reset Confirm Modal */}
-      <ConfirmModal
-        isOpen={showResetConfirm}
-        onClose={() => setShowResetConfirm(false)}
-        title="تأكيد التصفير"
-        message="هل أنت متأكد من تصفير الأرباح والأرصدة؟"
-        onConfirm={handleResetProfit}
-        confirmText="تأكيد التصفير"
-        cancelText="إلغاء"
-        type="warning"
-      />
     </div>
   );
 }

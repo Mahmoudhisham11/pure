@@ -3,12 +3,20 @@ export const CONFIG = {
   ADMIN_EMAILS: ['بيور'],
   DISCOUNT_PASSWORDS: {
     FULL_ACCESS: '123456',
-    LIMITED_ACCESS: '2298605522',
-    LIMITED_DISCOUNT_AMOUNT: 200
+    EYE_PASSWORD: '2468'
   },
   MAX_DISCOUNT_PERCENTAGE: 200,
   SEARCH_DEBOUNCE: 400,
   NOTIFICATION_DURATION: 3000
+};
+
+// Default config values (used as fallback)
+export const DEFAULT_CONFIG = {
+  ADMIN_EMAILS: ['بيور'],
+  DISCOUNT_PASSWORDS: {
+    FULL_ACCESS: '123456',
+    EYE_PASSWORD: '2468'
+  }
 };
 
 export const PERMISSIONS = {

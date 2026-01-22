@@ -455,3 +455,325 @@
     font-size: 24px;
     }
 }
+
+/* Admin Settings Styles */
+.adminGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 24px;
+  width: 100%;
+}
+
+.adminCard {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.adminCard:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.cardIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--main-color), var(--main-color-hover));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.cardTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cardSubtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 4px 0 0 0;
+  font-weight: 500;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inputGroup {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 16px;
+  color: var(--text-secondary);
+  font-size: 16px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.modernInput {
+  width: 100%;
+  padding: 14px 45px 14px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.3s ease;
+  background-color: var(--surface-hover);
+  color: var(--text-primary);
+  font-family: "Tajawal", sans-serif;
+  direction: rtl;
+  text-align: right;
+}
+
+.modernInput:hover {
+  border-color: var(--main-color);
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.modernInput:focus {
+  border-color: var(--main-color);
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+  background: var(--surface);
+}
+
+.modernSaveBtn {
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, var(--main-color), var(--main-color-hover));
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.modernSaveBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.modernSaveBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.modernSaveBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.adminsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.adminItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.adminItem:hover {
+  background: var(--surface);
+  border-color: var(--main-color);
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.adminInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.adminIcon {
+  color: var(--main-color);
+  font-size: 18px;
+}
+
+.adminEmail {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.currentUserBadge {
+  padding: 4px 12px;
+  background: linear-gradient(135deg, var(--main-color), var(--main-color-hover));
+  color: white;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.deleteAdminBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.deleteAdminBtn:hover:not(:disabled) {
+  background: #c82333;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.deleteAdminBtn:active:not(:disabled) {
+  transform: scale(1);
+}
+
+.deleteAdminBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.addAdminSection {
+  padding-top: 24px;
+  border-top: 2px solid var(--border-color);
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 20px 0;
+  display: flex;
+  align-items: center;
+}
+
+.addAdminForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.divider::before {
+  margin-left: 10px;
+}
+
+.divider::after {
+  margin-right: 10px;
+}
+
+.addAdminBtn {
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #28a745, #218838);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.addAdminBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  background: linear-gradient(135deg, #218838, #1e7e34);
+}
+
+.addAdminBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.addAdminBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 767px) {
+  .adminGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .adminCard {
+    padding: 20px;
+  }
+
+  .cardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .cardIcon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+}

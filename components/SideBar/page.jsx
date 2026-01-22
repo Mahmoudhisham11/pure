@@ -13,6 +13,7 @@ import { IoIosCloseCircle } from "react-icons/io";
 import { MdDarkMode, MdLightMode } from "react-icons/md";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { CONFIG } from "@/constants/config";
 
 function SideBar({openSideBar, setOpenSideBar}) {
     const [currentUser, setCurrentUser] = useState(null);
@@ -26,8 +27,9 @@ function SideBar({openSideBar, setOpenSideBar}) {
 
     const handleLogout = () => {
         if(typeof window !== 'undefined') {
-            localStorage.clear()
-            window.location.reload()
+            localStorage.removeItem("userName");
+            localStorage.removeItem("shop");
+            window.location.reload();
         }
     }
     return(
@@ -77,7 +79,7 @@ function SideBar({openSideBar, setOpenSideBar}) {
                     <span><TbReportSearch/></span>
                     <span>تقفيلة اليوم</span>
                 </Link>
-                {currentUser === "mostafabeso10@gmail.com" && 
+                {currentUser && CONFIG.ADMIN_EMAILS.includes(currentUser) && 
                   <Link href={'/profit'} className={styles.actionLinks}>
                     <span><TbReportSearch/></span>
                     <span>الارباح</span>
@@ -85,7 +87,7 @@ function SideBar({openSideBar, setOpenSideBar}) {
                 }
             </div>
             <div className={styles.logout}>
-                {currentUser === "mostafabeso10@gmail.com" && 
+                {currentUser && CONFIG.ADMIN_EMAILS.includes(currentUser) && 
                   <Link href={'/settings'} className={styles.actionLinks}>
                     <span><GoGear/></span>
                     <span>الاعدادات</span>

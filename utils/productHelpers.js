@@ -124,15 +124,7 @@ export const validatePrice = (price, product, password = null) => {
     }
 
     // Check password
-    if (password === CONFIG.DISCOUNT_PASSWORDS.LIMITED_ACCESS) {
-      const minAllowed = finalPrice - CONFIG.DISCOUNT_PASSWORDS.LIMITED_DISCOUNT_AMOUNT;
-      if (inputPrice < minAllowed) {
-        return {
-          valid: false,
-          message: `مسموح تنزل حتى ${minAllowed} فقط (فرق 50 جنيه عن السعر النهائي)`
-        };
-      }
-    } else if (password !== CONFIG.DISCOUNT_PASSWORDS.FULL_ACCESS) {
+    if (password !== CONFIG.DISCOUNT_PASSWORDS.FULL_ACCESS) {
       return {
         valid: false,
         message: 'الباسورد غير صحيح — لا يمكنك إدخال سعر أقل من السعر النهائي'

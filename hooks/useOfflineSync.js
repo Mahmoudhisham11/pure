@@ -1,4 +1,4 @@
-/**
+  /**
  * Enhanced Offline Sync Hook
  * 
  * Features:

@@ -29,16 +29,8 @@ export default function PriceModal({
   const handlePasswordConfirm = (password) => {
     setShowPasswordModal(false);
     const priceNum = Number(pendingPrice);
-    const finalPrice = Number(product.finalPrice);
 
-    if (password === CONFIG.DISCOUNT_PASSWORDS.LIMITED_ACCESS) {
-      const minAllowed = finalPrice - CONFIG.DISCOUNT_PASSWORDS.LIMITED_DISCOUNT_AMOUNT;
-      if (priceNum < minAllowed) {
-        showError(`مسموح تنزل حتى ${minAllowed} فقط`);
-        setPendingPrice(null);
-        return;
-      }
-    } else if (password !== CONFIG.DISCOUNT_PASSWORDS.FULL_ACCESS) {
+    if (password !== CONFIG.DISCOUNT_PASSWORDS.FULL_ACCESS) {
       showError("الباسورد غير صحيح");
       setPendingPrice(null);
       return;

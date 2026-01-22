@@ -31,8 +31,6 @@ function ReportsContent() {
   const router = useRouter();
   const { success, error: showError, warning } = useNotification();
   const [fromDate, setFromDate] = useState("");
-  const [showDeleted, setShowDeleted] = useState(false);
-  const [deletedProducts, setDeletedProducts] = useState([]);
   const [toDate, setToDate] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [reports, setReports] = useState([]);
@@ -46,9 +44,7 @@ function ReportsContent() {
   const [loading, setLoading] = useState(true);
   const [showReturns, setShowReturns] = useState(false);
   const [returnsList, setReturnsList] = useState([]);
-  const [isExporting, setIsExporting] = useState(false);
   const [isReturning, setIsReturning] = useState(false);
-  const [selectedDeletedIds, setSelectedDeletedIds] = useState(new Set());
   const [selectedReturnIds, setSelectedReturnIds] = useState(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -124,28 +120,6 @@ function ReportsContent() {
     checkLock();
   }, [router, showError]);
 
-  // Fetch deleted products
-  useEffect(() => {
-    if (!shop) return;
-
-    const q = query(
-      collection(db, "deletedProducts"),
-      where("shop", "==", shop)
-    );
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const all = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setDeletedProducts(all);
-      },
-      (err) => {
-        console.error("Error fetching deletedProducts:", err);
-        showError("حدث خطأ أثناء جلب المنتجات المحذوفة");
-      }
-    );
-
-    return () => unsubscribe();
-  }, [shop, showError]);
 
   // Fetch reports
   useEffect(() => {
@@ -358,39 +332,6 @@ function ReportsContent() {
     });
   }, [returnsList, fromDate, toDate, toMillis]);
 
-  // Check if user has permission to view deleted products
-  const canViewDeleted = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    const currentUser = localStorage.getItem("userName");
-    return currentUser === "mostafabeso10@gmail.com" || currentUser === "medo";
-  }, []);
-
-  // Handle select all for deleted products
-  const handleSelectAllDeleted = useCallback(
-    (checked) => {
-      if (checked) {
-        setSelectedDeletedIds(new Set(deletedProducts.map((item) => item.id)));
-      } else {
-        setSelectedDeletedIds(new Set());
-      }
-    },
-    [deletedProducts]
-  );
-
-  // Handle select item for deleted products
-  const handleSelectDeletedItem = useCallback(
-    (id, checked) => {
-      const newSelected = new Set(selectedDeletedIds);
-      if (checked) {
-        newSelected.add(id);
-      } else {
-        newSelected.delete(id);
-      }
-      setSelectedDeletedIds(newSelected);
-    },
-    [selectedDeletedIds]
-  );
-
   // Handle select all for returns
   const handleSelectAllReturns = useCallback(
     (checked) => {
@@ -420,29 +361,6 @@ function ReportsContent() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteType, setDeleteType] = useState(""); // "deleted" or "returns"
 
-  // Delete selected deleted products
-  const handleDeleteSelectedDeleted = useCallback(async () => {
-    setIsDeleting(true);
-    try {
-      const batchInstance = writeBatch(db);
-
-      selectedDeletedIds.forEach((id) => {
-        const docRef = doc(db, "deletedProducts", id);
-        batchInstance.delete(docRef);
-      });
-
-      await batchInstance.commit();
-      success(`تم حذف ${selectedDeletedIds.size} منتج محذوف بنجاح`);
-      setSelectedDeletedIds(new Set());
-    } catch (err) {
-      console.error("Error deleting deleted products:", err);
-      showError("حدث خطأ أثناء حذف المنتجات");
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteConfirm(false);
-    }
-  }, [selectedDeletedIds, success, showError]);
-
   // Delete selected returns
   const handleDeleteSelectedReturns = useCallback(async () => {
     setIsDeleting(true);
@@ -467,168 +385,16 @@ function ReportsContent() {
   }, [selectedReturnIds, success, showError]);
 
   const handleConfirmDelete = useCallback(() => {
-    if (deleteType === "deleted") {
-      handleDeleteSelectedDeleted();
-    } else if (deleteType === "returns") {
+    if (deleteType === "returns") {
       handleDeleteSelectedReturns();
     }
-  }, [deleteType, handleDeleteSelectedDeleted, handleDeleteSelectedReturns]);
-
-  const isAllDeletedSelected =
-    deletedProducts.length > 0 &&
-    selectedDeletedIds.size === deletedProducts.length;
-  const isIndeterminateDeleted =
-    selectedDeletedIds.size > 0 &&
-    selectedDeletedIds.size < deletedProducts.length;
+  }, [deleteType, handleDeleteSelectedReturns]);
   const isAllReturnsSelected =
     displayedReturns.length > 0 &&
     selectedReturnIds.size === displayedReturns.length;
   const isIndeterminateReturns =
     selectedReturnIds.size > 0 &&
     selectedReturnIds.size < displayedReturns.length;
-
-  // Excel export
-  const exportToExcel = useCallback(async () => {
-    if (!fromDate || !toDate) {
-      showError("رجاءً اختر فترة (من - إلى) قبل التصدير");
-      return;
-    }
-
-    setIsExporting(true);
-    try {
-      const fromTime = new Date(fromDate).setHours(0, 0, 0, 0);
-      const toTime = new Date(toDate).setHours(23, 59, 59, 999);
-
-      const exportProducts = [];
-      let totalSales = 0;
-      let totalProfit = 0;
-
-      displayedReports.forEach((report) => {
-        report.cart?.forEach((item) => {
-          const itemDate = new Date(report.date.seconds * 1000).getTime();
-          if (itemDate >= fromTime && itemDate <= toTime) {
-            const itemTotal = item.sellPrice * item.quantity;
-            const itemProfit =
-              (item.sellPrice - (item.buyPrice || 0)) * item.quantity;
-            totalSales += itemTotal;
-            totalProfit += itemProfit;
-
-            exportProducts.push({
-              "اسم المنتج": item.name,
-              الكمية: item.quantity,
-              "سعر البيع": item.sellPrice,
-              "سعر الشراء": item.buyPrice,
-              الربح: itemProfit,
-              الخصم: report.discount ?? 0,
-              "اسم العميل": report.clientName,
-              "رقم الهاتف": report.phone,
-              الموظف: report.employee,
-              المحل: report.shop,
-              التاريخ: new Date(report.date.seconds * 1000).toLocaleDateString(
-                "ar-EG"
-              ),
-            });
-          }
-        });
-      });
-
-      const expensesSnapshot = await getDocs(
-        query(collection(db, "masrofat"), where("shop", "==", shop))
-      );
-      const exportExpenses = [];
-      let totalExpenses = 0;
-
-      expensesSnapshot.forEach((docSnap) => {
-        const exp = docSnap.data();
-        const dateStr = exp.date;
-        if (!dateStr) return;
-        const normalized = dateStr.replace(/[٠-٩]/g, (d) =>
-          "٠١٢٣٤٥٦٧٨٩".indexOf(d)
-        );
-        const parts = normalized.split("/").map((p) => p.replace(/[^\d]/g, ""));
-        if (parts.length === 3) {
-          const [day, month, year] = parts.map(Number);
-          const expTime = new Date(year, month - 1, day).getTime();
-          if (expTime >= fromTime && expTime <= toTime) {
-            totalExpenses += Number(exp.masrof) || 0;
-            exportExpenses.push({
-              البيان: exp.reason || "-",
-              القيمة: exp.masrof || 0,
-              التاريخ: exp.date,
-              المحل: exp.shop || "-",
-            });
-          }
-        }
-      });
-
-      const debtsSnapshot = await getDocs(
-        query(collection(db, "debts"), where("shop", "==", shop))
-      );
-      const exportDebts = [];
-      debtsSnapshot.forEach((docSnap) => {
-        const debt = docSnap.data();
-        const debtDate = debt.date?.seconds
-          ? new Date(debt.date.seconds * 1000)
-          : null;
-        if (!debtDate) return;
-        const debtTime = debtDate.getTime();
-        if (debtTime >= fromTime && debtTime <= toTime) {
-          exportDebts.push({
-            "اسم العميل": debt.name || debt.clientName || "-",
-            المبلغ: debt.debt || debt.amount || 0,
-            التاريخ: debtDate.toLocaleDateString("ar-EG"),
-            المحل: debt.shop || "-",
-            ملاحظات: debt.notes || "-",
-          });
-        }
-      });
-
-      const summaryData = [
-        { البند: "إجمالي المبيعات", القيمة: totalSales },
-        { البند: "إجمالي المصروفات", القيمة: totalExpenses },
-        { البند: "إجمالي الربح", القيمة: totalProfit },
-        { البند: "صافي الربح", القيمة: totalProfit - totalExpenses },
-      ];
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(
-        workbook,
-        XLSX.utils.json_to_sheet(exportProducts),
-        "Products"
-      );
-      XLSX.utils.book_append_sheet(
-        workbook,
-        XLSX.utils.json_to_sheet(exportExpenses),
-        "Expenses"
-      );
-      XLSX.utils.book_append_sheet(
-        workbook,
-        XLSX.utils.json_to_sheet(exportDebts),
-        "Debts"
-      );
-      XLSX.utils.book_append_sheet(
-        workbook,
-        XLSX.utils.json_to_sheet(summaryData),
-        "Summary"
-      );
-
-      const excelBuffer = XLSX.write(workbook, {
-        bookType: "xlsx",
-        type: "array",
-      });
-      const data = new Blob([excelBuffer], {
-        type: "application/octet-stream",
-      });
-      saveAs(data, `Reports_${new Date().toLocaleDateString("ar-EG")}.xlsx`);
-
-      success("✅ تم تصدير الملف بنجاح!");
-    } catch (err) {
-      console.error("Error exporting to Excel:", err);
-      showError("حدث خطأ أثناء تصدير الملف");
-    } finally {
-      setIsExporting(false);
-    }
-  }, [fromDate, toDate, displayedReports, shop, success, showError]);
 
   // Drawer functions
   const openDrawer = useCallback((report) => {
@@ -838,37 +604,11 @@ function ReportsContent() {
           <h2 className={styles.title}>التقارير</h2>
           <div className={styles.headerActions}>
             <button
-              className={styles.exportBtn}
-              onClick={exportToExcel}
-              disabled={isExporting}
-            >
-              {isExporting ? "جاري التصدير..." : "تصدير Excel"}
-            </button>
-            <button
               className={styles.toggleBtn}
               onClick={() => setShowReturns(!showReturns)}
             >
               {showReturns ? "إخفاء المرتجعات" : "عرض المرتجعات"}
             </button>
-            <button
-              className={styles.toggleBtn}
-              onClick={() => setShowDeleted(!showDeleted)}
-            >
-              {showDeleted ? "إخفاء المحذوفات" : "عرض المحذوفات"}
-            </button>
-            {showDeleted && selectedDeletedIds.size > 0 && (
-              <button
-                className={styles.deleteSelectedBtn}
-                onClick={() => {
-                  setDeleteType("deleted");
-                  setShowDeleteConfirm(true);
-                }}
-                disabled={isDeleting}
-              >
-                <FaRegTrashAlt />
-                حذف المحدد ({selectedDeletedIds.size})
-              </button>
-            )}
             {showReturns && selectedReturnIds.size > 0 && (
               <button
                 className={styles.deleteSelectedBtn}
@@ -932,29 +672,7 @@ function ReportsContent() {
           <table className={styles.reportsTable}>
             <thead>
               <tr>
-                {showDeleted ? (
-                  <>
-                    <th className={styles.checkboxCell}>
-                      <input
-                        type="checkbox"
-                        checked={isAllDeletedSelected}
-                        ref={(input) => {
-                          if (input)
-                            input.indeterminate = isIndeterminateDeleted;
-                        }}
-                        onChange={(e) =>
-                          handleSelectAllDeleted(e.target.checked)
-                        }
-                        className={styles.checkbox}
-                      />
-                    </th>
-                    <th>الكود</th>
-                    <th>اسم المنتج</th>
-                    <th>الكمية</th>
-                    <th>سعر الشراء</th>
-                    <th>تاريخ الحذف</th>
-                  </>
-                ) : showReturns ? (
+                {showReturns ? (
                   <>
                     <th className={styles.checkboxCell}>
                       <input
@@ -990,57 +708,7 @@ function ReportsContent() {
               </tr>
             </thead>
             <tbody>
-              {showDeleted ? (
-                deletedProducts.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className={styles.emptyCell}>
-                      <div className={styles.emptyState}>
-                        <p>❌ لا توجد منتجات محذوفة</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  deletedProducts.map((item, index) => {
-                    const delMs = toMillis(item.deletedAt);
-                    const delDateStr = delMs
-                      ? new Date(delMs).toLocaleDateString("ar-EG")
-                      : item.deletedAt || "-";
-
-                    return (
-                      <tr
-                        key={`deleted-${item.id || `index-${index}`}-${index}-${
-                          delMs || Date.now()
-                        }`}
-                        className={
-                          selectedDeletedIds.has(item.id)
-                            ? styles.selectedRow
-                            : ""
-                        }
-                      >
-                        <td className={styles.checkboxCell}>
-                          <input
-                            type="checkbox"
-                            checked={selectedDeletedIds.has(item.id)}
-                            onChange={(e) =>
-                              handleSelectDeletedItem(item.id, e.target.checked)
-                            }
-                            className={styles.checkbox}
-                          />
-                        </td>
-                        <td className={styles.codeCell}>{item.code || "-"}</td>
-                        <td className={styles.nameCell}>{item.name || "-"}</td>
-                        <td className={styles.quantityCell}>
-                          {item.deletedTotalQty || "-"}
-                        </td>
-                        <td className={styles.priceCell}>
-                          {item.buyPrice || "-"} EGP
-                        </td>
-                        <td className={styles.dateCell}>{delDateStr}</td>
-                      </tr>
-                    );
-                  })
-                )
-              ) : showReturns ? (
+              {showReturns ? (
                 displayedReturns.length === 0 ? (
                   <tr>
                     <td colSpan={7} className={styles.emptyCell}>
@@ -1257,11 +925,7 @@ function ReportsContent() {
           setDeleteType("");
         }}
         title="تأكيد الحذف"
-        message={
-          deleteType === "deleted"
-            ? `هل أنت متأكد أنك تريد حذف ${selectedDeletedIds.size} منتج محذوف؟`
-            : `هل أنت متأكد أنك تريد حذف ${selectedReturnIds.size} مرتجع؟`
-        }
+        message={`هل أنت متأكد أنك تريد حذف ${selectedReturnIds.size} مرتجع؟`}
         onConfirm={handleConfirmDelete}
         confirmText="حذف"
         cancelText="إلغاء"

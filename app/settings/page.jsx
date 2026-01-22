@@ -7,6 +7,7 @@ import {
   doc,
   query,
   where,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import dataLayer from "@/lib/DataLayer";
@@ -15,10 +16,22 @@ import { offlineUpdate } from "@/utils/firebaseOffline";
 import { VscPercentage } from "react-icons/vsc";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/Loader/Loader";
+import { 
+  FaLock, 
+  FaEye, 
+  FaUserShield, 
+  FaUserPlus, 
+  FaTrash, 
+  FaSave,
+  FaKey,
+  FaUsers
+} from "react-icons/fa";
 import {
   NotificationProvider,
   useNotification,
 } from "@/contexts/NotificationContext";
+import { useAppConfig } from "@/hooks/useAppConfig";
+import { CONFIG } from "@/constants/config";
 
 function SettingsContent() {
   const router = useRouter();
@@ -41,6 +54,16 @@ function SettingsContent() {
   const [employeePercentage, setEmployeePercentage] = useState("");
   const [currentUserName, setCurrentUserName] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Admin settings states
+  const [fullAccessPassword, setFullAccessPassword] = useState("");
+  const [eyePassword, setEyePassword] = useState("");
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [selectedUserForAdmin, setSelectedUserForAdmin] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // App config hook
+  const { config: appConfig, loading: configLoading, updateConfig } = useAppConfig();
 
   // التحقق من الصلاحيات
   useEffect(() => {
@@ -68,6 +91,8 @@ function SettingsContent() {
             return;
           } else {
             setAuth(true);
+            // التحقق من أن المستخدم هو admin
+            setIsAdmin(CONFIG.ADMIN_EMAILS.includes(userName));
           }
         } else {
           router.push("/");
@@ -121,6 +146,14 @@ function SettingsContent() {
 
     return () => unsub();
   }, [showError]);
+
+  // تحميل إعدادات المدير عند فتح التبويب
+  useEffect(() => {
+    if (activeTab === "adminSettings" && appConfig) {
+      setFullAccessPassword(appConfig.DISCOUNT_PASSWORDS?.FULL_ACCESS || "");
+      setEyePassword(appConfig.DISCOUNT_PASSWORDS?.EYE_PASSWORD || "");
+    }
+  }, [activeTab, appConfig]);
 
   // إعادة تعيين selectedUser عند تغيير التبويب
   useEffect(() => {
@@ -268,6 +301,148 @@ function SettingsContent() {
     return employees.find((e) => e.id === selectedUser);
   }, [employees, selectedUser]);
 
+  // Admin settings handlers
+  const handleSaveFullAccessPassword = useCallback(async () => {
+    if (!fullAccessPassword || fullAccessPassword.trim() === "") {
+      showError("يرجى إدخال باسورد فتح السعر");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/764e729c-c6af-4c97-a73b-3c6e6ce7a894',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/settings/page.jsx:313',message:'Before updateConfig call',data:{fullAccessPassword:fullAccessPassword.trim(),hasAppConfig:!!appConfig},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      const updateSuccess = await updateConfig({
+        DISCOUNT_PASSWORDS: {
+          ...appConfig?.DISCOUNT_PASSWORDS,
+          FULL_ACCESS: fullAccessPassword.trim(),
+        },
+      });
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/764e729c-c6af-4c97-a73b-3c6e6ce7a894',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/settings/page.jsx:318',message:'After updateConfig call',data:{updateSuccess:updateSuccess,typeOfUpdateSuccess:typeof updateSuccess},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/764e729c-c6af-4c97-a73b-3c6e6ce7a894',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/settings/page.jsx:319',message:'Checking success function',data:{successType:typeof success,isFunction:typeof success === 'function'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      if (updateSuccess) {
+        success("✅ تم حفظ باسورد فتح السعر بنجاح");
+      } else {
+        showError("حدث خطأ أثناء الحفظ");
+      }
+    } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/764e729c-c6af-4c97-a73b-3c6e6ce7a894',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/settings/page.jsx:324',message:'Error caught',data:{errorMessage:error?.message,errorStack:error?.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      console.error("Error saving full access password:", error);
+      showError("حدث خطأ أثناء الحفظ ❌");
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [fullAccessPassword, appConfig, updateConfig, success, showError]);
+
+  const handleSaveEyePassword = useCallback(async () => {
+    if (!eyePassword || eyePassword.trim() === "") {
+      showError("يرجى إدخال باسورد العين");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/764e729c-c6af-4c97-a73b-3c6e6ce7a894',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/settings/page.jsx:340',message:'Before updateConfig call for eye password',data:{eyePassword:eyePassword.trim(),hasAppConfig:!!appConfig},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      const updateSuccess = await updateConfig({
+        DISCOUNT_PASSWORDS: {
+          ...appConfig?.DISCOUNT_PASSWORDS,
+          EYE_PASSWORD: eyePassword.trim(),
+        },
+      });
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/764e729c-c6af-4c97-a73b-3c6e6ce7a894',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/settings/page.jsx:345',message:'After updateConfig call for eye password',data:{updateSuccess:updateSuccess,typeOfUpdateSuccess:typeof updateSuccess},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      if (updateSuccess) {
+        success("✅ تم حفظ باسورد العين بنجاح");
+      } else {
+        showError("حدث خطأ أثناء الحفظ");
+      }
+    } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/764e729c-c6af-4c97-a73b-3c6e6ce7a894',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/settings/page.jsx:351',message:'Error caught in eye password',data:{errorMessage:error?.message,errorStack:error?.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      console.error("Error saving eye password:", error);
+      showError("حدث خطأ أثناء الحفظ ❌");
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [eyePassword, appConfig, updateConfig, success, showError]);
+
+  const handleAddAdmin = useCallback(async () => {
+    const emailToAdd = newAdminEmail.trim() || selectedUserForAdmin;
+    if (!emailToAdd) {
+      showError("يرجى إدخال اسم مستخدم أو اختيار مستخدم من القائمة");
+      return;
+    }
+
+    const currentAdmins = appConfig?.ADMIN_EMAILS || CONFIG.ADMIN_EMAILS || [];
+    if (currentAdmins.includes(emailToAdd)) {
+      showError("هذا المستخدم موجود بالفعل في قائمة المديرين");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const updateSuccess = await updateConfig({
+        ADMIN_EMAILS: [...currentAdmins, emailToAdd],
+      });
+      if (updateSuccess) {
+        success("✅ تم إضافة المدير بنجاح");
+        setNewAdminEmail("");
+        setSelectedUserForAdmin("");
+      } else {
+        showError("حدث خطأ أثناء الحفظ");
+      }
+    } catch (error) {
+      console.error("Error adding admin:", error);
+      showError("حدث خطأ أثناء الحفظ ❌");
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [newAdminEmail, selectedUserForAdmin, appConfig, updateConfig, success, showError]);
+
+  const handleRemoveAdmin = useCallback(
+    async (emailToRemove) => {
+      if (emailToRemove === currentUserName) {
+        showError("لا يمكنك حذف نفسك من قائمة المديرين");
+        return;
+      }
+
+      const currentAdmins = appConfig?.ADMIN_EMAILS || CONFIG.ADMIN_EMAILS || [];
+      if (currentAdmins.length <= 1) {
+        showError("يجب أن يكون هناك مدير واحد على الأقل");
+        return;
+      }
+
+      setIsProcessing(true);
+      try {
+        const updateSuccess = await updateConfig({
+          ADMIN_EMAILS: currentAdmins.filter((email) => email !== emailToRemove),
+        });
+        if (updateSuccess) {
+          success("✅ تم حذف المدير بنجاح");
+        } else {
+          showError("حدث خطأ أثناء الحفظ");
+        }
+      } catch (error) {
+        console.error("Error removing admin:", error);
+        showError("حدث خطأ أثناء الحفظ ❌");
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [currentUserName, appConfig, updateConfig, success, showError]
+  );
+
   if (loading) return <Loader />;
   if (!auth) return null;
 
@@ -294,6 +469,14 @@ function SettingsContent() {
           >
             نسبة الموظفين
           </button>
+          {isAdmin && (
+            <button
+              className={activeTab === "adminSettings" ? styles.activeTab : ""}
+              onClick={() => handleTabChange("adminSettings")}
+            >
+              صلاحيات المدير
+            </button>
+          )}
         </div>
 
         {/* صلاحيات المستخدمين */}
@@ -405,6 +588,171 @@ function SettingsContent() {
               >
                 {isProcessing ? "جاري الحفظ..." : "حفظ نسبة الموظف"}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* صلاحيات المدير */}
+        {activeTab === "adminSettings" && isAdmin && (
+          <div className={styles.container}>
+            <div className={styles.contentContainer}>
+              <h3 className={styles.percentageTitle}>
+                <FaUserShield style={{ marginLeft: "8px" }} />
+                إعدادات المدير
+              </h3>
+
+              <div className={styles.adminGrid}>
+                {/* تغيير باسورد فتح السعر */}
+                <div className={styles.adminCard}>
+                  <div className={styles.cardHeader}>
+                    <div className={styles.cardIcon}>
+                      <FaKey />
+                    </div>
+                    <div>
+                      <h4 className={styles.cardTitle}>باسورد فتح السعر</h4>
+                      <p className={styles.cardSubtitle}>FULL_ACCESS</p>
+                    </div>
+                  </div>
+                  <div className={styles.cardBody}>
+                    <div className={styles.inputGroup}>
+                      <FaLock className={styles.inputIcon} />
+                      <input
+                        type="text"
+                        value={fullAccessPassword}
+                        onChange={(e) => setFullAccessPassword(e.target.value)}
+                        placeholder="أدخل الباسورد الجديد"
+                        className={styles.modernInput}
+                      />
+                    </div>
+                    <button
+                      className={styles.modernSaveBtn}
+                      onClick={handleSaveFullAccessPassword}
+                      disabled={isProcessing || !fullAccessPassword.trim()}
+                    >
+                      <FaSave style={{ marginLeft: "8px" }} />
+                      {isProcessing ? "جاري الحفظ..." : "حفظ الباسورد"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* تغيير باسورد العين */}
+                <div className={styles.adminCard}>
+                  <div className={styles.cardHeader}>
+                    <div className={styles.cardIcon}>
+                      <FaEye />
+                    </div>
+                    <div>
+                      <h4 className={styles.cardTitle}>باسورد العين</h4>
+                      <p className={styles.cardSubtitle}>EYE_PASSWORD</p>
+                    </div>
+                  </div>
+                  <div className={styles.cardBody}>
+                    <div className={styles.inputGroup}>
+                      <FaEye className={styles.inputIcon} />
+                      <input
+                        type="text"
+                        value={eyePassword}
+                        onChange={(e) => setEyePassword(e.target.value)}
+                        placeholder="أدخل الباسورد الجديد"
+                        className={styles.modernInput}
+                      />
+                    </div>
+                    <button
+                      className={styles.modernSaveBtn}
+                      onClick={handleSaveEyePassword}
+                      disabled={isProcessing || !eyePassword.trim()}
+                    >
+                      <FaSave style={{ marginLeft: "8px" }} />
+                      {isProcessing ? "جاري الحفظ..." : "حفظ الباسورد"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* إدارة المديرين */}
+                <div className={styles.adminCard} style={{ gridColumn: "1 / -1" }}>
+                  <div className={styles.cardHeader}>
+                    <div className={styles.cardIcon}>
+                      <FaUsers />
+                    </div>
+                    <div>
+                      <h4 className={styles.cardTitle}>قائمة المديرين</h4>
+                      <p className={styles.cardSubtitle}>إدارة صلاحيات المديرين</p>
+                    </div>
+                  </div>
+                  <div className={styles.cardBody}>
+                    {/* قائمة المديرين الحاليين */}
+                    <div className={styles.adminsList}>
+                      {(appConfig?.ADMIN_EMAILS || CONFIG.ADMIN_EMAILS || []).map((email) => (
+                        <div key={email} className={styles.adminItem}>
+                          <div className={styles.adminInfo}>
+                            <FaUserShield className={styles.adminIcon} />
+                            <span className={styles.adminEmail}>{email}</span>
+                            {email === currentUserName && (
+                              <span className={styles.currentUserBadge}>أنت</span>
+                            )}
+                          </div>
+                          {email !== currentUserName && (
+                            <button
+                              className={styles.deleteAdminBtn}
+                              onClick={() => handleRemoveAdmin(email)}
+                              disabled={isProcessing}
+                              title="حذف المدير"
+                            >
+                              <FaTrash />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* إضافة مدير جديد */}
+                    <div className={styles.addAdminSection}>
+                      <h5 className={styles.sectionTitle}>
+                        <FaUserPlus style={{ marginLeft: "8px" }} />
+                        إضافة مدير جديد
+                      </h5>
+                      <div className={styles.addAdminForm}>
+                        <div className={styles.inputGroup}>
+                          <FaUserPlus className={styles.inputIcon} />
+                          <input
+                            type="text"
+                            value={newAdminEmail}
+                            onChange={(e) => setNewAdminEmail(e.target.value)}
+                            placeholder="أدخل اسم المستخدم"
+                            className={styles.modernInput}
+                          />
+                        </div>
+                        <div className={styles.divider}>
+                          <span>أو</span>
+                        </div>
+                        <div className={styles.inputGroup}>
+                          <FaUsers className={styles.inputIcon} />
+                          <select
+                            value={selectedUserForAdmin}
+                            onChange={(e) => setSelectedUserForAdmin(e.target.value)}
+                            className={styles.modernInput}
+                          >
+                            <option value="">اختر مستخدم من القائمة</option>
+                            {users.map((user) => (
+                              <option key={user.id} value={user.userName}>
+                                {user.userName || "مستخدم بدون اسم"}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <button
+                          className={styles.addAdminBtn}
+                          onClick={handleAddAdmin}
+                          disabled={isProcessing || (!newAdminEmail.trim() && !selectedUserForAdmin)}
+                        >
+                          <FaUserPlus style={{ marginLeft: "8px" }} />
+                          {isProcessing ? "جاري الإضافة..." : "إضافة مدير"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
