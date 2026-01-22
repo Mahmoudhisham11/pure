@@ -140,11 +140,14 @@ function MainContent() {
     if (!searchCode || !shop) return;
 
     const timer = setTimeout(() => {
-      const trimmedCode = searchCode.trim();
-      if (!trimmedCode) return;
+      const trimmedSearch = searchCode.trim();
+      if (!trimmedSearch) return;
 
+      const searchLower = trimmedSearch.toLowerCase();
       const foundProduct = products.find(
-        (p) => p.code?.toString() === trimmedCode
+        (p) => 
+          p.code?.toString().toLowerCase().includes(searchLower) ||
+          p.name?.toLowerCase().includes(searchLower)
       );
       
       if (!foundProduct) {

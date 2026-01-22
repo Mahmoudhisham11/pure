@@ -8,17 +8,19 @@ import {
   getDocs,
   query,
   where,
+  addDoc,
   Timestamp,
+  deleteDoc,
   doc,
+  updateDoc,
   onSnapshot,
 } from "firebase/firestore";
-import dataLayer from "@/lib/DataLayer";
-import { offlineAdd, offlineUpdate, offlineDelete } from "@/utils/firebaseOffline";
 import Loader from "@/components/Loader/Loader";
 import {
   NotificationProvider,
   useNotification,
 } from "@/contexts/NotificationContext";
+import ConfirmModal from "@/components/Main/Modals/ConfirmModal";
 
 function ProfitContent() {
   const { success, error: showError, warning } = useNotification();
@@ -147,9 +149,6 @@ function ProfitContent() {
     }
   }, [shop, showError]);
 
-  // Helper: Check if online (inline function to avoid dependency issues)
-  const checkOnline = () => typeof window !== "undefined" && navigator.onLine;
-
   // Fetch all data
   const fetchData = useCallback(async () => {
     if (!shop) return;
@@ -157,37 +156,6 @@ function ProfitContent() {
     try {
       setLoading(true);
 
-      // ✅ Offline: قراءة من localStorage
-      if (!checkOnline()) {
-        // Fetch reports from localStorage
-        const reportsSaved = localStorage.getItem("offlineReports") || "[]";
-        const offlineReports = JSON.parse(reportsSaved);
-        const filteredReports = offlineReports.filter((r) => r.shop === shop);
-        setReports(filteredReports);
-
-        // Fetch daily profit from localStorage
-        const profitSaved = localStorage.getItem("offlineDailyProfit") || "[]";
-        const offlineProfits = JSON.parse(profitSaved);
-        const filteredProfits = offlineProfits.filter((p) => p.shop === shop);
-        setDailyProfitData(filteredProfits);
-
-        // Fetch masrofat from localStorage (المصاريف المتبقية بعد التقفيل)
-        const masrofatSaved = localStorage.getItem("offlineMasrofat") || "[]";
-        const offlineMasrofat = JSON.parse(masrofatSaved);
-        const filteredMasrofat = offlineMasrofat.filter((m) => m.shop === shop);
-        setMasrofat(filteredMasrofat);
-
-        // Fetch withdraws from localStorage
-        const withdrawsSaved = localStorage.getItem("offlineWithdraws") || "[]";
-        const offlineWithdraws = JSON.parse(withdrawsSaved);
-        const filteredWithdraws = offlineWithdraws.filter((w) => w.shop === shop);
-        setWithdraws(filteredWithdraws);
-
-        setLoading(false);
-        return;
-      }
-
-      // ✅ Online: قراءة من Firestore
       // Fetch reports
       const reportsSnap = await getDocs(
         query(collection(db, "reports"), where("shop", "==", shop))
@@ -232,104 +200,16 @@ function ProfitContent() {
     if (!shop) return;
     fetchData();
     fetchReset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shop]);
+  }, [shop, fetchData, fetchReset]);
 
   // Real-time updates
   useEffect(() => {
     if (!shop) return;
 
-    // ✅ Offline: استماع للأحداث المحلية
-    if (!checkOnline()) {
-      const loadOfflineData = () => {
-        try {
-          // Reports
-          const reportsSaved = localStorage.getItem("offlineReports") || "[]";
-          const offlineReports = JSON.parse(reportsSaved);
-          setReports(offlineReports.filter((r) => r.shop === shop));
-
-          // Daily Profit
-          const profitSaved = localStorage.getItem("offlineDailyProfit") || "[]";
-          const offlineProfits = JSON.parse(profitSaved);
-          setDailyProfitData(offlineProfits.filter((p) => p.shop === shop));
-
-          // Masrofat
-          const masrofatSaved = localStorage.getItem("offlineMasrofat") || "[]";
-          const offlineMasrofat = JSON.parse(masrofatSaved);
-          setMasrofat(offlineMasrofat.filter((m) => m.shop === shop));
-
-          // Withdraws
-          const withdrawsSaved = localStorage.getItem("offlineWithdraws") || "[]";
-          const offlineWithdraws = JSON.parse(withdrawsSaved);
-          setWithdraws(offlineWithdraws.filter((w) => w.shop === shop));
-        } catch (error) {
-          console.error("Error loading offline data:", error);
-        }
-      };
-
-      loadOfflineData();
-
-      // استماع للأحداث
-      const handleReportsUpdated = () => loadOfflineData();
-      const handleProfitUpdated = () => loadOfflineData();
-      const handleMasrofatUpdated = () => loadOfflineData();
-      const handleWithdrawsUpdated = () => loadOfflineData();
-
-      window.addEventListener("offlineReportsUpdated", handleReportsUpdated);
-      window.addEventListener("offlineDailyProfitUpdated", handleProfitUpdated);
-      window.addEventListener("offlineMasrofatUpdated", handleMasrofatUpdated);
-      window.addEventListener("offlineWithdrawsUpdated", handleWithdrawsUpdated);
-
-      return () => {
-        window.removeEventListener("offlineReportsUpdated", handleReportsUpdated);
-        window.removeEventListener("offlineDailyProfitUpdated", handleProfitUpdated);
-        window.removeEventListener("offlineMasrofatUpdated", handleMasrofatUpdated);
-        window.removeEventListener("offlineWithdrawsUpdated", handleWithdrawsUpdated);
-      };
-    }
-
-    // ✅ Online: اشتراكات Firebase
     const unsubscribeReports = onSnapshot(
       query(collection(db, "reports"), where("shop", "==", shop)),
       (snapshot) => {
-        const reportsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setReports(reportsData);
-        
-        // حفظ في localStorage
-        if (typeof window !== "undefined") {
-          try {
-            const reportsSaved = localStorage.getItem("offlineReports") || "[]";
-            const existing = JSON.parse(reportsSaved);
-            const existingMap = new Map();
-            existing.forEach((r) => {
-              const key = r.id || `${r.invoiceNumber}-${r.date?.seconds || 0}`;
-              existingMap.set(key, r);
-            });
-            
-            reportsData.forEach((report) => {
-              const key = report.id || `${report.invoiceNumber}-${report.date?.seconds || 0}`;
-              const reportForStorage = {
-                ...report,
-                date: report.date?.toDate
-                  ? {
-                      seconds: report.date.seconds,
-                      nanoseconds: report.date.nanoseconds,
-                    }
-                  : report.date?.seconds
-                  ? {
-                      seconds: report.date.seconds,
-                      nanoseconds: report.date.nanoseconds || 0,
-                    }
-                  : report.date,
-              };
-              existingMap.set(key, reportForStorage);
-            });
-            
-            localStorage.setItem("offlineReports", JSON.stringify(Array.from(existingMap.values())));
-          } catch (e) {
-            console.error("Error saving reports to localStorage:", e);
-          }
-        }
+        setReports(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
       },
       (error) => {
         console.error("Error in reports subscription:", error);
@@ -340,17 +220,9 @@ function ProfitContent() {
     const unsubscribeWithdraws = onSnapshot(
       query(collection(db, "withdraws"), where("shop", "==", shop)),
       (snapshot) => {
-        const withdrawsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setWithdraws(withdrawsData);
-        
-        // حفظ في localStorage
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("offlineWithdraws", JSON.stringify(withdrawsData));
-          } catch (e) {
-            console.error("Error saving withdraws to localStorage:", e);
-          }
-        }
+        setWithdraws(
+          snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        );
       },
       (error) => {
         console.error("Error in withdraws subscription:", error);
@@ -361,18 +233,9 @@ function ProfitContent() {
     const unsubscribeDailyProfit = onSnapshot(
       query(collection(db, "dailyProfit"), where("shop", "==", shop)),
       (snapshot) => {
-        const profitData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setDailyProfitData(profitData);
-        
-        // حفظ في localStorage
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("offlineDailyProfit", JSON.stringify(profitData));
-            window.dispatchEvent(new CustomEvent("offlineDailyProfitUpdated"));
-          } catch (e) {
-            console.error("Error saving daily profit to localStorage:", e);
-          }
-        }
+        setDailyProfitData(
+          snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        );
       },
       (error) => {
         console.error("Error in dailyProfit subscription:", error);
@@ -383,18 +246,9 @@ function ProfitContent() {
     const unsubscribeMasrofat = onSnapshot(
       query(collection(db, "masrofat"), where("shop", "==", shop)),
       (snapshot) => {
-        const masrofatData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setMasrofat(masrofatData);
-        
-        // حفظ في localStorage
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("offlineMasrofat", JSON.stringify(masrofatData));
-            window.dispatchEvent(new CustomEvent("offlineMasrofatUpdated"));
-          } catch (e) {
-            console.error("Error saving masrofat to localStorage:", e);
-          }
-        }
+        setMasrofat(
+          snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        );
       },
       (error) => {
         console.error("Error in masrofat subscription:", error);
@@ -491,62 +345,22 @@ function ProfitContent() {
     // حساب الربح = مجموع أرباح كل فاتورة من reports
     let profitValue = 0;
     filteredReports.forEach((r) => {
-      // استخدام profit من الفاتورة مباشرة إذا كان موجوداً
-      let reportProfit = Number(r.profit || 0);
-      
-      // إذا لم يكن profit موجوداً، نحسبه من cart
-      if (reportProfit === 0 && r.cart && Array.isArray(r.cart) && r.cart.length > 0) {
-        reportProfit = r.cart.reduce((sum, item) => {
-          const sellPrice = Number(item.sellPrice || 0);
-          const buyPrice = Number(item.buyPrice || item.productPrice || 0);
-          const quantity = Number(item.quantity || 0);
-          const itemProfit = (sellPrice - buyPrice) * quantity;
-          return sum + itemProfit;
-        }, 0);
-        
-        // خصم الخصم من الربح إذا كان موجوداً
-        const discount = Number(r.discount || 0);
-        if (discount > 0) {
-          const cartTotal = r.cart.reduce((sum, item) => {
-            return sum + (Number(item.sellPrice || 0) * Number(item.quantity || 0));
-          }, 0);
-          if (cartTotal > 0) {
-            // نسبة الخصم من إجمالي المبيعات
-            const discountRatio = discount / cartTotal;
-            reportProfit = reportProfit * (1 - discountRatio);
-          }
-        }
-      }
-      
+      // استخدام profit من الفاتورة مباشرة
+      const reportProfit = Number(r.profit || 0);
       profitValue += reportProfit;
     });
 
-    // حساب المصروفات بدون "فاتورة مرتجع" من filteredMasrofat (المصاريف المباشرة)
+    // حساب المصروفات بدون "فاتورة مرتجع"
     const totalMasrofatWithoutReturn = filteredMasrofat.reduce((sum, m) => {
       // استبعاد المصروفات التي سببها "فاتورة مرتجع"
       if (m.reason === "فاتورة مرتجع") {
         return sum;
       }
-      return sum + Number(m.masrof || m.amount || 0);
+      return sum + Number(m.masrof || 0);
     }, 0);
 
-    // حساب المصروفات من dailyProfitData (المصاريف المحفوظة عند التقفيل)
-    // ملاحظة: dailyProfitData.totalMasrofat قد يحتوي على مصاريف مرتجع أيضاً، لكننا نستخدمه كما هو
-    // لأن dailyProfitData يتم إنشاؤه عند التقفيل ويحتوي على إجمالي المصروفات
-    const totalMasrofatFromDaily = filteredDaily.reduce((sum, d) => {
-      return sum + Number(d.totalMasrofat || 0);
-    }, 0);
-
-    // إجمالي المصروفات = مصاريف مباشرة + مصاريف من التقفيلات
-    // لكن يجب تجنب التكرار: إذا كانت المصاريف محفوظة في dailyProfit، فلا نحسبها من filteredMasrofat
-    // الحل: نستخدم أكبر قيمة أو نجمعها حسب المنطق
-    // في الواقع، عند التقفيل يتم حذف المصاريف من masrofat وحفظها في dailyProfit
-    // لذا يجب استخدام totalMasrofatFromDaily + totalMasrofatWithoutReturn (المصاريف الجديدة بعد التقفيل)
-    const totalAllMasrofat = totalMasrofatFromDaily + totalMasrofatWithoutReturn;
-
-    // حساب صافي الربح = مجموع أرباح كل فاتورة - إجمالي المصروفات
-    // إجمالي المصروفات = مصاريف من التقفيلات + مصاريف مباشرة جديدة
-    const netProfitValue = profitValue - totalAllMasrofat;
+    // حساب صافي الربح = مجموع أرباح كل فاتورة - المصروفات (بدون فاتورة مرتجع)
+    const netProfitValue = profitValue - totalMasrofatWithoutReturn;
 
     let remainingProfit = profitValue;
     const totalMasrofatT = filteredDaily.reduce(
@@ -631,7 +445,7 @@ function ProfitContent() {
     setIsProcessing(true);
     try {
       const newDate = new Date();
-      await dataLayer.add("withdraws", {
+      await addDoc(collection(db, "withdraws"), {
         shop,
         person: withdrawPerson,
         amount,
@@ -673,7 +487,7 @@ function ProfitContent() {
     setIsProcessing(true);
     try {
       const newDate = new Date();
-      await dataLayer.add("withdraws", {
+      await addDoc(collection(db, "withdraws"), {
         shop,
         person: "الخزنة",
         amount,
@@ -699,7 +513,7 @@ function ProfitContent() {
     setIsProcessing(true);
     try {
       const now = Timestamp.now();
-      await offlineAdd("reset", {
+      await addDoc(collection(db, "reset"), {
         shop,
         resetAt: now,
       });
@@ -723,7 +537,7 @@ function ProfitContent() {
 
       setIsProcessing(true);
       try {
-        await offlineDelete("withdraws", id);
+        await deleteDoc(doc(db, "withdraws", id));
         success("✅ تم حذف السحب بنجاح");
       } catch (error) {
         console.error("Error deleting withdraw:", error);
@@ -763,7 +577,8 @@ function ProfitContent() {
 
     setIsProcessing(true);
     try {
-      await offlineUpdate("withdraws", payWithdrawId, { paid: (withdraw.paid || 0) + amount });
+      const withdrawRef = doc(db, "withdraws", payWithdrawId);
+      await updateDoc(withdrawRef, { paid: (withdraw.paid || 0) + amount });
       success("✅ تم السداد بنجاح");
       setShowPayPopup(false);
     } catch (error) {
@@ -813,6 +628,12 @@ function ProfitContent() {
             <button onClick={toggleHidden} className={styles.toggleBtn}>
               {isHidden ? "إظهار الأرقام" : "إخفاء الأرقام"}
             </button>
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className={styles.resetBtn}
+            >
+              تصفير الأرباح
+            </button>
           </div>
         </div>
 
@@ -859,7 +680,309 @@ function ProfitContent() {
             </span>
           </div>
         </div>
+        <div className={styles.summaryCards}>
+          <div className={styles.summaryCard}>
+            <span className={styles.summaryLabel}>مصطفى</span>
+            <span className={styles.summaryValue}>
+              {isHidden ? "*****" : mostafaBalance.toFixed(2)} EGP
+            </span>
+          </div>
+          <div className={styles.summaryCard}>
+            <span className={styles.summaryLabel}>ميدو</span>
+            <span className={styles.summaryValue}>
+              {isHidden ? "*****" : midoBalance.toFixed(2)} EGP
+            </span>
+          </div>
+          <div className={styles.summaryCard}>
+            <span className={styles.summaryLabel}>دبل M</span>
+            <span className={styles.summaryValue}>
+              {isHidden ? "*****" : doubleMBalance.toFixed(2)} EGP
+            </span>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className={styles.actionButtons}>
+          <button
+            onClick={() => setShowPopup(true)}
+            className={styles.withdrawBtn}
+          >
+            سحب
+          </button>
+          <button
+            onClick={() => setShowAddCashPopup(true)}
+            className={styles.addCashBtn}
+          >
+            إضافة للخزنة
+          </button>
+        </div>
+
+        {/* Table */}
+        <div className={styles.tableWrapper}>
+          <table className={styles.profitTable}>
+            <thead>
+              <tr>
+                <th>الاسم</th>
+                <th>المبلغ</th>
+                <th>المدفوع</th>
+                <th>المتبقي</th>
+                <th>التاريخ</th>
+                <th>ملاحظات</th>
+                <th>حذف</th>
+                <th>سداد</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredWithdraws.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className={styles.emptyCell}>
+                    <div className={styles.emptyState}>
+                      <p>❌ لا توجد سحوبات في الفترة المحددة</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredWithdraws.map((w) => {
+                  const remaining = w.amount - (w.paid || 0);
+                  return (
+                    <tr key={w.id}>
+                      <td className={styles.nameCell}>{w.person}</td>
+                      <td className={styles.amountCell}>
+                        {isHidden ? "*****" : w.amount.toFixed(2)} EGP
+                      </td>
+                      <td className={styles.paidCell}>
+                        {isHidden ? "*****" : (w.paid || 0).toFixed(2)} EGP
+                      </td>
+                      <td className={styles.remainingCell}>
+                        {isHidden ? "*****" : remaining.toFixed(2)} EGP
+                      </td>
+                      <td className={styles.dateCell}>
+                        {formatDate(
+                          parseDate(w.date) || parseDate(w.createdAt)
+                        )}
+                      </td>
+                      <td className={styles.notesCell}>{w.notes || "-"}</td>
+                      <td className={styles.actionsCell}>
+                        {remaining > 0 && (
+                          <button
+                            className={styles.delBtn}
+                            onClick={() => handleDeleteWithdraw(w.id)}
+                            disabled={isProcessing}
+                          >
+                            حذف
+                          </button>
+                        )}
+                      </td>
+                      <td className={styles.actionsCell}>
+                        {remaining > 0 && (
+                          <button
+                            className={styles.payBtn}
+                            onClick={() => handleOpenPay(w)}
+                            disabled={isProcessing}
+                          >
+                            سداد
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* Withdraw Modal */}
+      {showPopup && (
+        <div
+          className={styles.modalOverlay}
+          onClick={() => setShowPopup(false)}
+        >
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>عملية سحب</h3>
+              <button
+                className={styles.closeBtn}
+                onClick={() => setShowPopup(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalContent}>
+              <div className={styles.inputContainer}>
+                <label>اختر الشخص:</label>
+                <select
+                  value={withdrawPerson}
+                  onChange={(e) => setWithdrawPerson(e.target.value)}
+                  className={styles.selectInput}
+                >
+                  <option value="">اختر الشخص</option>
+                  <option value="مصطفى">مصطفى</option>
+                  <option value="ميدو">ميدو</option>
+                  <option value="دبل M">دبل M</option>
+                </select>
+              </div>
+              <div className={styles.inputContainer}>
+                <label>المبلغ:</label>
+                <input
+                  type="number"
+                  placeholder="المبلغ"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  className={styles.modalInput}
+                />
+              </div>
+              <div className={styles.inputContainer}>
+                <label>ملاحظات:</label>
+                <input
+                  type="text"
+                  placeholder="ملاحظات"
+                  value={withdrawNotes}
+                  onChange={(e) => setWithdrawNotes(e.target.value)}
+                  className={styles.modalInput}
+                />
+              </div>
+            </div>
+            <div className={styles.modalActions}>
+              <button
+                onClick={handleWithdraw}
+                className={styles.confirmBtn}
+                disabled={isProcessing}
+              >
+                {isProcessing ? "جاري المعالجة..." : "تأكيد"}
+              </button>
+              <button
+                onClick={() => setShowPopup(false)}
+                className={styles.cancelBtn}
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Cash Modal */}
+      {showAddCashPopup && (
+        <div
+          className={styles.modalOverlay}
+          onClick={() => setShowAddCashPopup(false)}
+        >
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>إضافة مبلغ للخزنة</h3>
+              <button
+                className={styles.closeBtn}
+                onClick={() => setShowAddCashPopup(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalContent}>
+              <div className={styles.inputContainer}>
+                <label>المبلغ:</label>
+                <input
+                  type="number"
+                  placeholder="المبلغ"
+                  value={addCashAmount}
+                  onChange={(e) => setAddCashAmount(e.target.value)}
+                  className={styles.modalInput}
+                />
+              </div>
+              <div className={styles.inputContainer}>
+                <label>ملاحظات:</label>
+                <input
+                  type="text"
+                  placeholder="ملاحظات"
+                  value={addCashNotes}
+                  onChange={(e) => setAddCashNotes(e.target.value)}
+                  className={styles.modalInput}
+                />
+              </div>
+            </div>
+            <div className={styles.modalActions}>
+              <button
+                onClick={handleAddCash}
+                className={styles.confirmBtn}
+                disabled={isProcessing}
+              >
+                {isProcessing ? "جاري المعالجة..." : "تأكيد"}
+              </button>
+              <button
+                onClick={() => setShowAddCashPopup(false)}
+                className={styles.cancelBtn}
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pay Modal */}
+      {showPayPopup && (
+        <div
+          className={styles.modalOverlay}
+          onClick={() => setShowPayPopup(false)}
+        >
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>سداد مبلغ</h3>
+              <button
+                className={styles.closeBtn}
+                onClick={() => setShowPayPopup(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalContent}>
+              <div className={styles.editInfo}>
+                <p>
+                  <strong>الشخص:</strong> {payPerson}
+                </p>
+              </div>
+              <div className={styles.inputContainer}>
+                <label>المبلغ:</label>
+                <input
+                  type="number"
+                  placeholder="المبلغ"
+                  value={payAmount}
+                  onChange={(e) => setPayAmount(e.target.value)}
+                  className={styles.modalInput}
+                />
+              </div>
+            </div>
+            <div className={styles.modalActions}>
+              <button
+                onClick={handlePay}
+                className={styles.confirmBtn}
+                disabled={isProcessing}
+              >
+                {isProcessing ? "جاري المعالجة..." : "تأكيد"}
+              </button>
+              <button
+                onClick={() => setShowPayPopup(false)}
+                className={styles.cancelBtn}
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Confirm Modal */}
+      <ConfirmModal
+        isOpen={showResetConfirm}
+        onClose={() => setShowResetConfirm(false)}
+        title="تأكيد التصفير"
+        message="هل أنت متأكد من تصفير الأرباح والأرصدة؟"
+        onConfirm={handleResetProfit}
+        confirmText="تأكيد التصفير"
+        cancelText="إلغاء"
+        type="warning"
+      />
     </div>
   );
 }

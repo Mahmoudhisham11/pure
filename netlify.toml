@@ -1,11 +1,5 @@
 [build]
   command = "npm run build"
-  # لا نحدد publish directory - الـ plugin يتعامل معه تلقائياً
-  # يجب إزالة publish directory من Netlify UI settings
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-# إعدادات البيئة
-[build.environment]
-  NODE_VERSION = "20"

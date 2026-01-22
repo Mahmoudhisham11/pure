@@ -123,51 +123,18 @@ export const closeDayService = {
             const reportsSaved = localStorage.getItem("offlineReports") || "[]";
             const reports = JSON.parse(reportsSaved);
             
-            // إضافة كل فاتورة كـ report مع جميع البيانات المطلوبة
+            // إضافة كل فاتورة كـ report
             allSales.forEach((sale) => {
-              // التأكد من وجود date بشكل صحيح
-              let saleDate = sale.date;
-              if (!saleDate) {
-                saleDate = {
-                  seconds: timestamp.seconds,
-                  nanoseconds: timestamp.nanoseconds,
-                };
-              } else if (saleDate.toDate) {
-                // تحويل Firebase Timestamp لـ object بسيط
-                saleDate = {
-                  seconds: saleDate.seconds,
-                  nanoseconds: saleDate.nanoseconds,
-                };
-              } else if (saleDate.seconds) {
-                // إذا كان object بالفعل، نتركه كما هو
-                saleDate = {
-                  seconds: saleDate.seconds,
-                  nanoseconds: saleDate.nanoseconds || 0,
-                };
-              }
-              
               const reportData = {
                 ...sale,
                 closedBy: userName,
                 id: sale.id || sale.queueId || `report-${Date.now()}-${Math.random()}`,
-                date: saleDate,
-                // التأكد من وجود profit و total
-                profit: sale.profit || 0,
-                total: sale.total || 0,
-                shop: sale.shop || shop,
+                date: sale.date || {
+                  seconds: timestamp.seconds,
+                  nanoseconds: timestamp.nanoseconds,
+                },
               };
-              
-              // التحقق من عدم التكرار
-              const existingIndex = reports.findIndex(r => 
-                r.id === reportData.id || 
-                (r.invoiceNumber === reportData.invoiceNumber && r.date && reportData.date)
-              );
-              
-              if (existingIndex >= 0) {
-                reports[existingIndex] = reportData;
-              } else {
-                reports.push(reportData);
-              }
+              reports.push(reportData);
             });
             localStorage.setItem("offlineReports", JSON.stringify(reports));
 
@@ -340,49 +307,6 @@ export const closeDayService = {
           closedBy: userName,
         });
         batch.delete(saleRef);
-      }
-      
-      // ✅ حفظ التقارير في localStorage أيضاً عند الـ online
-      if (typeof window !== "undefined") {
-        try {
-          const reportsSaved = localStorage.getItem("offlineReports") || "[]";
-          const reports = JSON.parse(reportsSaved);
-          
-          allSales.forEach((sale) => {
-            let saleDate = sale.date;
-            if (saleDate?.toDate) {
-              saleDate = {
-                seconds: saleDate.seconds,
-                nanoseconds: saleDate.nanoseconds,
-              };
-            } else if (saleDate?.seconds) {
-              saleDate = {
-                seconds: saleDate.seconds,
-                nanoseconds: saleDate.nanoseconds || 0,
-              };
-            }
-            
-            const reportData = {
-              ...sale,
-              closedBy: userName,
-              id: sale.id || `report-${Date.now()}-${Math.random()}`,
-              date: saleDate,
-              profit: sale.profit || 0,
-              total: sale.total || 0,
-              shop: sale.shop || shop,
-            };
-            
-            const existingIndex = reports.findIndex(r => r.id === reportData.id);
-            if (existingIndex >= 0) {
-              reports[existingIndex] = reportData;
-            } else {
-              reports.push(reportData);
-            }
-          });
-          localStorage.setItem("offlineReports", JSON.stringify(reports));
-        } catch (e) {
-          console.error("Error saving reports to localStorage:", e);
-        }
       }
 
       // Save daily profit

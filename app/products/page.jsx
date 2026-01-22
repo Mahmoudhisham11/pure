@@ -187,12 +187,12 @@ function ProductsContent() {
     let filtered = products || [];
 
     if (searchCode.trim()) {
-      filtered = filtered.filter((p) =>
-        p.code
-          ?.toString()
-          .toLowerCase()
-          .includes(searchCode.trim().toLowerCase())
-      );
+      const search = searchCode.trim().toLowerCase();
+      filtered = filtered.filter((p) => {
+        const matchCode = p.code?.toString().toLowerCase().includes(search);
+        const matchName = p.name?.toLowerCase().includes(search);
+        return matchCode || matchName;
+      });
     }
 
     // Filter by section
@@ -305,7 +305,10 @@ function ProductsContent() {
 
   const handleAddProduct = useCallback(async () => {
     // ✅ منع تنفيذ الإضافة لو بالفعل في عملية إضافة
-    if (isSaving || addProductLockRef.current) return;
+    if (isSaving || addProductLockRef.current) {
+      console.warn("Product addition already in progress, skipping duplicate call");
+      return;
+    }
 
     // Validation
     if (!form.name.trim()) {
@@ -334,8 +337,10 @@ function ProductsContent() {
       return;
     }
 
+    // ✅ تعيين lock و loading state قبل بدء العملية
     addProductLockRef.current = true;
     setIsSaving(true);
+    
     try {
       const newCode = await getNextCode();
 
@@ -347,8 +352,9 @@ function ProductsContent() {
 
       if (totalQty <= 0) {
         showError("يرجى إدخال كمية أكبر من صفر");
-        setIsSaving(false);
+        // ✅ إعادة تعيين state قبل return
         addProductLockRef.current = false;
+        setIsSaving(false);
         return;
       }
 
@@ -378,13 +384,26 @@ function ProductsContent() {
           throw new Error(result1?.error || "فشل إضافة المنتج في المنتجات");
         }
 
-        // إضافة في الوارد (نفس البيانات)
-        const result2 = await offlineAdd("wared", productObj);
+        // إضافة في الوارد (نفس البيانات) مع retry mechanism
+        let result2 = await offlineAdd("wared", productObj);
+        let retryCount = 0;
+        const maxRetries = 3;
         
-        // التحقق من نجاح العملية الثانية (لو فشلت، نكمل لأن المنتج اتضاف)
+        // إعادة المحاولة إذا فشلت إضافة الوارد
+        while ((!result2 || !result2.success) && retryCount < maxRetries) {
+          retryCount++;
+          console.warn(`محاولة إضافة المنتج في الوارد (المحاولة ${retryCount}/${maxRetries}):`, result2?.error);
+          
+          // انتظار قصير قبل إعادة المحاولة
+          await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
+          
+          result2 = await offlineAdd("wared", productObj);
+        }
+        
+        // التحقق من نجاح العملية الثانية
         if (!result2 || !result2.success) {
-          console.warn("فشل إضافة المنتج في الوارد:", result2?.error);
-          // نكمل لأن المنتج الأساسي اتضاف بنجاح
+          console.error("فشل إضافة المنتج في الوارد بعد عدة محاولات:", result2?.error);
+          warning("تم إضافة المنتج بنجاح لكن فشلت إضافته في الوارد. سيتم إضافته تلقائياً عند المزامنة.");
         }
 
         success("تم إضافة المنتج بنجاح");
@@ -414,8 +433,9 @@ function ProductsContent() {
         `حدث خطأ أثناء إضافة المنتج: ${err.message || "خطأ غير معروف"}`
       );
     } finally {
-      setIsSaving(false);
+      // ✅ التأكد من إعادة تعيين state في جميع الحالات
       addProductLockRef.current = false;
+      setIsSaving(false);
     }
   }, [
     form,
@@ -1080,14 +1100,14 @@ function ProductsContent() {
                   <input
                     type="text"
                     list="codesList"
-                    placeholder="بحث..."
+                    placeholder="ابحث بالاسم أو الكود"
                     value={searchCode}
                     onChange={(e) => setSearchCode(e.target.value)}
                     className={styles.searchInput}
                   />
                   <datalist id="codesList">
                     {products.map((p) => (
-                      <option key={p.id} value={p.code} />
+                      <option key={p.id} value={`${p.name || ''} - ${p.code || ''}`} />
                     ))}
                   </datalist>
                 </div>

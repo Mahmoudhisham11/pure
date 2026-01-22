@@ -293,6 +293,57 @@ export function useOfflineSync() {
                 console.warn("Could not check existing invoice before add:", e);
               }
             }
+
+            // ✅ حماية من التكرار للـ lacosteProducts و wared
+            // التحقق من وجود منتج بنفس code + shop + type قبل الإضافة
+            if ((operation.collectionName === "lacosteProducts" || operation.collectionName === "wared") && operation.data) {
+              // ✅ أولاً: التحقق من أن المنتج غير محذوف محلياً
+              if (typeof window !== "undefined") {
+                const localKey = operation.collectionName === "lacosteProducts" ? "offlineProducts" : "offlineWared";
+                const localProducts = JSON.parse(localStorage.getItem(localKey) || "[]");
+                const shop = operation.data.shop;
+                const code = operation.data.code;
+                const type = operation.data.type || "product";
+                
+                // التحقق من وجود منتج بنفس code + shop + type في localStorage
+                const existsLocally = localProducts.some(
+                  p => p.code === code && p.shop === shop && p.type === type
+                );
+                
+                // إذا لم يكن موجوداً محلياً (تم حذفه)، نتخطى الإضافة
+                if (!existsLocally) {
+                  console.log(`⚠️ Product ${code} was deleted locally, skipping add operation for ${operation.collectionName}`);
+                  offlineQueue.markAsSynced(operation.id);
+                  offlineQueue.remove(operation.id);
+                  successCount++;
+                  continue;
+                }
+              }
+
+              // ✅ ثانياً: التحقق من وجود منتج في Firestore
+              try {
+                const q = query(
+                  collection(db, operation.collectionName),
+                  where("code", "==", operation.data.code),
+                  where("shop", "==", operation.data.shop),
+                  where("type", "==", operation.data.type || "product")
+                );
+                const existing = await dataReader.get(q);
+                if (existing && existing.length > 0) {
+                  const existingId = existing[0].id;
+                  console.log(`⚠️ Product with code ${operation.data.code} already exists in ${operation.collectionName}, linking to existing ID: ${existingId}`);
+                  // ربط العملية بالـ id الموجود بدلاً من إنشاء منتج جديد
+                  updateLocalDataWithFirebaseId(operation.collectionName, operation.id, existingId);
+                  offlineQueue.markAsSynced(operation.id);
+                  offlineQueue.remove(operation.id);
+                  successCount++;
+                  continue;
+                }
+              } catch (e) {
+                // نتجاهل ونكمل add العادي
+                console.warn(`Could not check existing product in ${operation.collectionName} before add:`, e);
+              }
+            }
             
             const result = await dataLayer.add(operation.collectionName, operation.data);
             
@@ -400,36 +451,43 @@ export function useOfflineSync() {
             try {
               // ✅ لو docId هو queueId نحاول نحدد Firebase ID الحقيقي قبل الحذف
               let deleteId = operation.docId;
+              let localKey = null;
+              
               if (deleteId && deleteId.startsWith("offline-") && typeof window !== "undefined") {
                 try {
                   let foundId = null;
                   switch (operation.collectionName) {
                     case "lacosteProducts": {
-                      const products = JSON.parse(localStorage.getItem("offlineProducts") || "[]");
+                      localKey = "offlineProducts";
+                      const products = JSON.parse(localStorage.getItem(localKey) || "[]");
                       const product = products.find((p) => p.id === deleteId || p.queueId === deleteId);
                       foundId = product?.id && !product.id.startsWith("offline-") ? product.id : null;
                       break;
                     }
                     case "dailySales": {
-                      const invoices = JSON.parse(localStorage.getItem("offlineInvoices") || "[]");
+                      localKey = "offlineInvoices";
+                      const invoices = JSON.parse(localStorage.getItem(localKey) || "[]");
                       const invoice = invoices.find((inv) => inv.id === deleteId || inv.queueId === deleteId);
                       foundId = invoice?.id && !invoice.id.startsWith("offline-") ? invoice.id : null;
                       break;
                     }
                     case "masrofat": {
-                      const masrofat = JSON.parse(localStorage.getItem("offlineMasrofat") || "[]");
+                      localKey = "offlineMasrofat";
+                      const masrofat = JSON.parse(localStorage.getItem(localKey) || "[]");
                       const masrof = masrofat.find((m) => m.id === deleteId || m.queueId === deleteId);
                       foundId = masrof?.id && !masrof.id.startsWith("offline-") ? masrof.id : null;
                       break;
                     }
                     case "wared": {
-                      const wared = JSON.parse(localStorage.getItem("offlineWared") || "[]");
+                      localKey = "offlineWared";
+                      const wared = JSON.parse(localStorage.getItem(localKey) || "[]");
                       const waredItem = wared.find((w) => w.id === deleteId || w.queueId === deleteId);
                       foundId = waredItem?.id && !waredItem.id.startsWith("offline-") ? waredItem.id : null;
                       break;
                     }
                     case "cart": {
-                      const cart = JSON.parse(localStorage.getItem("offlineCart") || "[]");
+                      localKey = "offlineCart";
+                      const cart = JSON.parse(localStorage.getItem(localKey) || "[]");
                       const cartItem = cart.find((c) => c.id === deleteId || c.queueId === deleteId);
                       foundId = cartItem?.id && !cartItem.id.startsWith("offline-") ? cartItem.id : null;
                       break;
@@ -441,14 +499,32 @@ export function useOfflineSync() {
                 }
               }
 
+              // ✅ التحقق من أن المنتج لا يزال محذوف محلياً قبل المزامنة
+              if (typeof window !== "undefined" && localKey) {
+                const localData = JSON.parse(localStorage.getItem(localKey) || "[]");
+                const existsLocally = localData.some(
+                  item => (item.id === deleteId || item.queueId === deleteId) ||
+                          (item.id === operation.docId || item.queueId === operation.docId)
+                );
+                
+                // إذا كان المنتج موجود محلياً (لم يعد محذوف)، نتخطى الحذف
+                if (existsLocally && !deleteId.startsWith("offline-")) {
+                  console.log(`⚠️ Product was restored locally, skipping delete operation for ${operation.collectionName}`);
+                  offlineQueue.markAsSynced(operation.id);
+                  offlineQueue.remove(operation.id);
+                  successCount++;
+                  continue;
+                }
+              }
+
               await dataLayer.delete(operation.collectionName, deleteId);
               offlineQueue.markAsSynced(operation.id);
               offlineQueue.remove(operation.id);
               successCount++;
             } catch (error) {
-              // إذا كان المستند غير موجود في Firebase، هذا طبيعي (ربما تم حذفه مسبقاً)
-              if (error.code === "not-found") {
-                console.log("Document already deleted from Firebase:", operation.docId);
+              // ✅ إذا كان المستند غير موجود في Firebase، هذا طبيعي (ربما تم حذفه مسبقاً)
+              if (error.code === "not-found" || error.message?.includes("No document to delete")) {
+                console.log(`⚠️ Document already deleted from Firebase (or never existed): ${operation.docId}`);
                 offlineQueue.markAsSynced(operation.id);
                 offlineQueue.remove(operation.id);
                 successCount++;

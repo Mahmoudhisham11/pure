@@ -7,13 +7,14 @@ import {
   query,
   where,
   getDocs,
+  addDoc,
   doc,
+  updateDoc,
   getDoc,
+  deleteDoc,
   onSnapshot,
   writeBatch,
 } from "firebase/firestore";
-import dataLayer from "@/lib/DataLayer";
-import { offlineAdd, offlineUpdate, offlineDelete } from "@/utils/firebaseOffline";
 import { db } from "@/app/firebase";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -146,41 +147,10 @@ function ReportsContent() {
     return () => unsubscribe();
   }, [shop, showError]);
 
-  // Helper: Check if online
-  const isOnline = useCallback(() => {
-    return typeof window !== "undefined" && navigator.onLine;
-  }, []);
-
   // Fetch reports
   useEffect(() => {
     if (!shop) return;
 
-    // ✅ Offline: قراءة من localStorage
-    if (!isOnline()) {
-      const loadOfflineReports = () => {
-        try {
-          const reportsSaved = localStorage.getItem("offlineReports") || "[]";
-          const offlineReports = JSON.parse(reportsSaved);
-          const filteredReports = offlineReports.filter((r) => r.shop === shop);
-          setReports(filteredReports);
-        } catch (error) {
-          console.error("Error loading offline reports:", error);
-          showError("حدث خطأ أثناء جلب التقارير");
-        }
-      };
-
-      loadOfflineReports();
-
-      // استماع للأحداث المحلية
-      const handleReportsUpdated = () => loadOfflineReports();
-      window.addEventListener("offlineReportsUpdated", handleReportsUpdated);
-
-      return () => {
-        window.removeEventListener("offlineReportsUpdated", handleReportsUpdated);
-      };
-    }
-
-    // ✅ Online: قراءة من Firestore
     const q = query(collection(db, "reports"), where("shop", "==", shop));
     const unsubscribe = onSnapshot(
       q,
@@ -190,47 +160,6 @@ function ReportsContent() {
           ...d.data(),
         }));
         setReports(allReports);
-
-        // ✅ حفظ التقارير في localStorage للاستخدام Offline
-        if (typeof window !== "undefined") {
-          try {
-            const reportsSaved = localStorage.getItem("offlineReports") || "[]";
-            const existing = JSON.parse(reportsSaved);
-            
-            // دمج التقارير الجديدة مع الموجودة
-            const existingMap = new Map();
-            existing.forEach((r) => {
-              const key = r.id || `${r.invoiceNumber}-${r.date?.seconds || 0}`;
-              existingMap.set(key, r);
-            });
-            
-            allReports.forEach((report) => {
-              const key = report.id || `${report.invoiceNumber}-${report.date?.seconds || 0}`;
-              
-              // تحويل Timestamp لـ object بسيط
-              const reportForStorage = {
-                ...report,
-                date: report.date?.toDate
-                  ? {
-                      seconds: report.date.seconds,
-                      nanoseconds: report.date.nanoseconds,
-                    }
-                  : report.date?.seconds
-                  ? {
-                      seconds: report.date.seconds,
-                      nanoseconds: report.date.nanoseconds || 0,
-                    }
-                  : report.date,
-              };
-              
-              existingMap.set(key, reportForStorage);
-            });
-            
-            localStorage.setItem("offlineReports", JSON.stringify(Array.from(existingMap.values())));
-          } catch (e) {
-            console.error("Error saving reports to localStorage:", e);
-          }
-        }
       },
       (err) => {
         console.error("Error fetching reports:", err);
@@ -239,39 +168,12 @@ function ReportsContent() {
     );
 
     return () => unsubscribe();
-  }, [shop, showError, isOnline]);
+  }, [shop, showError]);
 
   // Fetch masrofat
   useEffect(() => {
     if (!shop) return;
 
-    // ✅ Offline: قراءة من localStorage
-    if (!isOnline()) {
-      const loadOfflineMasrofat = () => {
-        try {
-          const masrofatSaved = localStorage.getItem("offlineMasrofat") || "[]";
-          const offlineMasrofat = JSON.parse(masrofatSaved);
-          const filteredMasrofat = offlineMasrofat.filter((m) => m.shop === shop);
-          setMasrofatList(filteredMasrofat);
-        } catch (error) {
-          console.error("Error loading offline masrofat:", error);
-          showError("حدث خطأ أثناء جلب المصروفات");
-        }
-      };
-
-      loadOfflineMasrofat();
-
-      const handleMasrofatUpdated = () => loadOfflineMasrofat();
-      window.addEventListener("offlineMasrofRemoved", handleMasrofatUpdated);
-      window.addEventListener("offlineMasrofatUpdated", handleMasrofatUpdated);
-
-      return () => {
-        window.removeEventListener("offlineMasrofRemoved", handleMasrofatUpdated);
-        window.removeEventListener("offlineMasrofatUpdated", handleMasrofatUpdated);
-      };
-    }
-
-    // ✅ Online: قراءة من Firestore
     const q = query(collection(db, "masrofat"), where("shop", "==", shop));
     const unsubscribe = onSnapshot(
       q,
@@ -286,37 +188,12 @@ function ReportsContent() {
     );
 
     return () => unsubscribe();
-  }, [shop, showError, isOnline]);
+  }, [shop, showError]);
 
   // Fetch returns
   useEffect(() => {
     if (!shop) return;
 
-    // ✅ Offline: قراءة من localStorage
-    if (!isOnline()) {
-      const loadOfflineReturns = () => {
-        try {
-          const returnsSaved = localStorage.getItem("offlineReturns") || "[]";
-          const offlineReturns = JSON.parse(returnsSaved);
-          const filteredReturns = offlineReturns.filter((r) => r.shop === shop);
-          setReturnsList(filteredReturns);
-        } catch (error) {
-          console.error("Error loading offline returns:", error);
-          showError("حدث خطأ أثناء جلب المرتجعات");
-        }
-      };
-
-      loadOfflineReturns();
-
-      const handleReturnsUpdated = () => loadOfflineReturns();
-      window.addEventListener("offlineReturnsUpdated", handleReturnsUpdated);
-
-      return () => {
-        window.removeEventListener("offlineReturnsUpdated", handleReturnsUpdated);
-      };
-    }
-
-    // ✅ Online: قراءة من Firestore
     const q = query(collection(db, "returns"), where("shop", "==", shop));
     const unsubscribe = onSnapshot(
       q,
@@ -331,7 +208,7 @@ function ReportsContent() {
     );
 
     return () => unsubscribe();
-  }, [shop, showError, isOnline]);
+  }, [shop, showError]);
 
   // Compute displayed reports
   useEffect(() => {
@@ -778,154 +655,6 @@ function ReportsContent() {
           "0"
         )}/${today.getFullYear()}`;
 
-        const itemTotalPrice =
-          Number(item.sellPrice || 0) * Number(item.quantity || 0);
-        const itemProfit =
-          (Number(item.sellPrice || 0) - Number(item.buyPrice || 0)) *
-          Number(item.quantity || 0);
-
-        // ✅ Offline: العمل مع البيانات المحفوظة محلياً
-        if (!isOnline()) {
-          // البحث عن الفاتورة في localStorage
-          const reportsSaved = localStorage.getItem("offlineReports") || "[]";
-          const reports = JSON.parse(reportsSaved);
-          const invoiceIndex = reports.findIndex((r) => r.id === invoiceId || r.invoiceNumber === invoiceId);
-          
-          if (invoiceIndex === -1) {
-            showError("⚠️ لم يتم العثور على الفاتورة!");
-            return;
-          }
-
-          const invoiceData = reports[invoiceIndex];
-          const invoiceDate = invoiceData.date;
-
-          // تحديث الكارت
-          const updatedCart = (invoiceData.cart || []).filter(
-            (p) =>
-              !(
-                p.code === item.code &&
-                p.quantity === item.quantity &&
-                p.sellPrice === item.sellPrice &&
-                p.name === item.name &&
-                (p.color || "") === (item.color || "") &&
-                (p.size || "") === (item.size || "")
-              )
-          );
-
-          if (updatedCart.length > 0) {
-            const newTotal = updatedCart.reduce(
-              (sum, p) => sum + (p.sellPrice * p.quantity || 0),
-              0
-            );
-            const newProfit = updatedCart.reduce(
-              (sum, p) =>
-                sum + (p.sellPrice - (p.buyPrice || 0)) * (p.quantity || 1),
-              0
-            );
-
-            // تحديث الفاتورة في localStorage
-            reports[invoiceIndex] = {
-              ...invoiceData,
-              cart: updatedCart,
-              total: newTotal,
-              profit: newProfit,
-            };
-            localStorage.setItem("offlineReports", JSON.stringify(reports));
-            
-            // تحديث قائمة التقارير في الـ state
-            setReports(reports.filter((r) => r.shop === shop));
-            window.dispatchEvent(new CustomEvent("offlineReportsUpdated"));
-
-            success(`✅ تم إرجاع ${item.name} بنجاح وحُذف من الفاتورة!`);
-          } else {
-            // حذف الفاتورة من localStorage
-            reports.splice(invoiceIndex, 1);
-            localStorage.setItem("offlineReports", JSON.stringify(reports));
-            
-            // تحديث قائمة التقارير في الـ state
-            setReports(reports.filter((r) => r.shop === shop));
-            window.dispatchEvent(new CustomEvent("offlineReportsUpdated"));
-
-            success(
-              `✅ تم إرجاع ${item.name} وحُذفت الفاتورة لأنها أصبحت فارغة.`
-            );
-          }
-
-          // إضافة مصروف مرتجع في localStorage
-          const masrofatSaved = localStorage.getItem("offlineMasrofat") || "[]";
-          const masrofat = JSON.parse(masrofatSaved);
-          masrofat.push({
-            id: `masrof-${Date.now()}-${Math.random()}`,
-            name: item.name,
-            masrof: itemTotalPrice,
-            profit: itemProfit,
-            reason: "فاتورة مرتجع",
-            date: formattedDate,
-            shop: item.shop || shop,
-          });
-          localStorage.setItem("offlineMasrofat", JSON.stringify(masrofat));
-          window.dispatchEvent(new CustomEvent("offlineMasrofatUpdated"));
-
-          // إضافة سجل مرتجع في localStorage
-          const returnsSaved = localStorage.getItem("offlineReturns") || "[]";
-          const returns = JSON.parse(returnsSaved);
-          returns.push({
-            id: `return-${Date.now()}-${Math.random()}`,
-            originalInvoiceId: invoiceId,
-            originalDate: invoiceDate || formattedDate,
-            returnDate: formattedDate,
-            item: item,
-            shop: item.shop || shop,
-          });
-          localStorage.setItem("offlineReturns", JSON.stringify(returns));
-          window.dispatchEvent(new CustomEvent("offlineReturnsUpdated"));
-
-          // تحديث المخزون في localStorage
-          const productsSaved = localStorage.getItem("offlineProducts") || "[]";
-          const products = JSON.parse(productsSaved);
-          const productIndex = products.findIndex(
-            (p) => p.code === item.code && p.shop === (item.shop || shop)
-          );
-          
-          if (productIndex !== -1) {
-            const prodData = products[productIndex];
-            let updatedData = { ...prodData };
-
-            if (item.color && Array.isArray(updatedData.colors)) {
-              updatedData.colors = updatedData.colors.map((c) => {
-                if (c.color === item.color) {
-                  if (item.size && Array.isArray(c.sizes)) {
-                    c.sizes = c.sizes.map((s) =>
-                      s.size === item.size
-                        ? { ...s, qty: (s.qty || 0) + Number(item.quantity) }
-                        : s
-                    );
-                  } else {
-                    c.quantity = (c.quantity || 0) + Number(item.quantity);
-                  }
-                }
-                return c;
-              });
-            } else if (item.size && Array.isArray(updatedData.sizes)) {
-              updatedData.sizes = updatedData.sizes.map((s) =>
-                s.size === item.size
-                  ? { ...s, qty: (s.qty || 0) + Number(item.quantity) }
-                  : s
-              );
-            } else if (!item.color && !item.size) {
-              updatedData.quantity =
-                (updatedData.quantity || 0) + Number(item.quantity);
-            }
-
-            products[productIndex] = updatedData;
-            localStorage.setItem("offlineProducts", JSON.stringify(products));
-          }
-
-          setIsReturning(false);
-          return;
-        }
-
-        // ✅ Online: العمل مع Firebase
         // Check total sales
         const dailySalesQ = query(
           collection(db, "dailySales"),
@@ -937,6 +666,12 @@ function ReportsContent() {
           const data = d.data();
           totalSales += Number(data.total || 0);
         });
+
+        const itemTotalPrice =
+          Number(item.sellPrice || 0) * Number(item.quantity || 0);
+        const itemProfit =
+          (Number(item.sellPrice || 0) - Number(item.buyPrice || 0)) *
+          Number(item.quantity || 0);
 
         if (totalSales < itemTotalPrice) {
           warning(
@@ -955,8 +690,8 @@ function ReportsContent() {
         );
 
         if (!prodQuerySnap.empty) {
-          const prodDoc = prodQuerySnap.docs[0];
-          const prodData = prodDoc.data();
+          const prodRef = prodQuerySnap.docs[0].ref;
+          const prodData = prodQuerySnap.docs[0].data();
           let updatedData = { ...prodData };
 
           if (item.color && Array.isArray(updatedData.colors)) {
@@ -985,7 +720,7 @@ function ReportsContent() {
               (updatedData.quantity || 0) + Number(item.quantity);
           }
 
-          await offlineUpdate("lacosteProducts", prodDoc.id, updatedData);
+          await updateDoc(prodRef, updatedData);
         }
 
         // Handle invoice
@@ -1023,7 +758,7 @@ function ReportsContent() {
             0
           );
 
-          await offlineUpdate("reports", invoiceId, {
+          await updateDoc(invoiceRef, {
             cart: updatedCart,
             total: newTotal,
             profit: newProfit,
@@ -1036,7 +771,7 @@ function ReportsContent() {
           );
           const empSnap = await getDocs(empQ);
           const updatePromises = empSnap.docs.map((d) =>
-            dataLayer.update("employeesReports", d.id, {
+            updateDoc(d.ref, {
               cart: updatedCart,
               total: newTotal,
               profit: newProfit,
@@ -1046,7 +781,7 @@ function ReportsContent() {
 
           success(`✅ تم إرجاع ${item.name} بنجاح وحُذف من الفاتورة!`);
         } else {
-          await offlineDelete("reports", invoiceId);
+          await deleteDoc(invoiceRef);
 
           const empQ = query(
             collection(db, "employeesReports"),
@@ -1054,7 +789,7 @@ function ReportsContent() {
             where("shop", "==", invoiceData.shop)
           );
           const empSnap = await getDocs(empQ);
-          const deletePromises = empSnap.docs.map((d) => dataLayer.delete("employeesReports", d.id));
+          const deletePromises = empSnap.docs.map((d) => deleteDoc(d.ref));
           await Promise.all(deletePromises);
 
           success(
@@ -1063,7 +798,7 @@ function ReportsContent() {
         }
 
         // Add masrofat record
-        await offlineAdd("masrofat", {
+        await addDoc(collection(db, "masrofat"), {
           name: item.name,
           masrof: itemTotalPrice,
           profit: itemProfit,
@@ -1073,7 +808,7 @@ function ReportsContent() {
         });
 
         // Add return record
-        await offlineAdd("returns", {
+        await addDoc(collection(db, "returns"), {
           originalInvoiceId: invoiceId,
           originalDate: invoiceDate || formattedDate,
           returnDate: formattedDate,
@@ -1087,7 +822,7 @@ function ReportsContent() {
         setIsReturning(false);
       }
     },
-    [shop, success, showError, warning, isOnline]
+    [shop, success, showError, warning]
   );
 
   if (loading) return <Loader />;

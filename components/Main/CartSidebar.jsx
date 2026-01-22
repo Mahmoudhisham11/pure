@@ -43,13 +43,13 @@ export default function CartSidebar({
               <input
                 type="text"
                 list="codeList"
-                placeholder="ابحث بالكود"
+                placeholder="ابحث بالاسم أو الكود"
                 value={searchCode}
                 onChange={(e) => onSearchChange(e.target.value)}
               />
               <datalist id="codeList">
                 {products.map((p) => (
-                  <option key={p.id} value={p.code} />
+                  <option key={p.id} value={`${p.name || ''} - ${p.code || ''}`} />
                 ))}
               </datalist>
             </div>

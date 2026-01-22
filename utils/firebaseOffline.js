@@ -114,10 +114,27 @@ function saveToLocalStorage(collectionName, action, data, queueId) {
           // حفظ المنتج محلياً للعرض الفوري
           const products = JSON.parse(localStorage.getItem("offlineProducts") || "[]");
           
-          // ✅ التحقق من عدم التكرار قبل الإضافة
+          // ✅ التحقق من عدم التكرار قبل الإضافة - تحقق أقوى
           const existingProduct = products.find(
-            p => (p.code === data.code && p.shop === data.shop && p.type === data.type) ||
-                 p.queueId === queueId || p.id === queueId
+            p => 
+              // نفس queueId أو id
+              p.queueId === queueId || p.id === queueId ||
+              // نفس code + shop + type
+              (p.code === data.code && p.shop === data.shop && p.type === (data.type || "product")) ||
+              // منع التكرار في نفس الثانية (نفس code + shop + name + type في نفس الثانية)
+              (p.code === data.code && 
+               p.shop === data.shop && 
+               p.name === data.name && 
+               p.type === (data.type || "product") &&
+               data.date && p.date &&
+               Math.abs(
+                 (typeof p.date === 'object' && p.date.toDate ? p.date.toDate().getTime() : 
+                  typeof p.date === 'string' ? new Date(p.date).getTime() : 
+                  typeof p.date === 'number' ? p.date : 0) -
+                 (typeof data.date === 'object' && data.date.toDate ? data.date.toDate().getTime() : 
+                  typeof data.date === 'string' ? new Date(data.date).getTime() : 
+                  typeof data.date === 'number' ? data.date : Date.now())
+               ) < 2000) // خلال ثانيتين
           );
           
           if (!existingProduct) {
@@ -125,7 +142,7 @@ function saveToLocalStorage(collectionName, action, data, queueId) {
             localStorage.setItem("offlineProducts", JSON.stringify(products));
             window.dispatchEvent(new CustomEvent("offlineProductAdded", { detail: { product: { id: queueId, queueId, ...data, isOffline: true } } }));
           } else {
-            console.warn("Product already exists in localStorage, skipping duplicate");
+            console.warn("Product already exists in localStorage, skipping duplicate", { code: data.code, name: data.name, shop: data.shop });
           }
         } else if (action === "update") {
           // تحديث المنتج محلياً

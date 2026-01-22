@@ -110,10 +110,17 @@ class OfflineQueue {
           const sameCode = (data.code || "") === (item.data.code || "");
           const sameShop = (data.shop || "") === (item.data.shop || "");
           const sameName = (data.name || "").trim() === (item.data.name || "").trim();
-          const sameType = (data.type || "") === (item.data.type || "");
-          // التحقق من نفس اللحظة (خلال ثانية واحدة) لتجنب التكرار السريع
-          const timeDiff = Math.abs(new Date(item.timestamp || 0).getTime() - Date.now());
-          return sameCode && sameShop && sameName && sameType && timeDiff < 2000; // خلال ثانيتين
+          const sameType = (data.type || "product") === (item.data.type || "product");
+          
+          // التحقق من نفس اللحظة (خلال 5 ثوانٍ) لتجنب التكرار السريع
+          const itemTimestamp = item.timestamp ? new Date(item.timestamp).getTime() : 0;
+          const currentTime = Date.now();
+          const timeDiff = Math.abs(itemTimestamp - currentTime);
+          
+          // إذا كانت نفس البيانات ونفس الوقت (خلال 5 ثوانٍ)، فهي عملية مكررة
+          if (sameCode && sameShop && sameName && sameType && timeDiff < 5000) {
+            return true;
+          }
         }
         
         // للعمليات الأخرى، نتحقق من البيانات بالكامل
