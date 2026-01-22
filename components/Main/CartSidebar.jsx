@@ -43,7 +43,7 @@ export default function CartSidebar({
               <input
                 type="text"
                 list="codeList"
-                placeholder="ابحث بالاسم أو الكود"
+                placeholder="ابحث بالاسم أو الكود (اكتب الاسم كاملاً)"
                 value={searchCode}
                 onChange={(e) => onSearchChange(e.target.value)}
               />

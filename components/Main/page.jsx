@@ -138,7 +138,7 @@ function MainContent() {
     checkSubscription();
   }, [userName, showError]);
 
-  // Product search
+  // Product search with improved logic
   useEffect(() => {
     if (!searchCode || !shop) return;
 
@@ -147,11 +147,47 @@ function MainContent() {
       if (!trimmedSearch) return;
 
       const searchLower = trimmedSearch.toLowerCase();
-      const foundProduct = products.find(
-        (p) => 
-          p.code?.toString().toLowerCase().includes(searchLower) ||
-          p.name?.toLowerCase().includes(searchLower)
-      );
+      const isNumeric = /^\d+$/.test(trimmedSearch);
+      
+      // Improved search logic with priority:
+      // 1. Exact match (name or code)
+      // 2. Starts with match
+      // 3. Includes match
+      // 4. Code match (if numeric)
+      
+      let foundProduct = null;
+      
+      // Priority 1: Exact match (case-insensitive)
+      foundProduct = products.find((p) => {
+        const nameMatch = p.name?.toLowerCase() === searchLower;
+        const codeMatch = p.code?.toString().toLowerCase() === searchLower;
+        return nameMatch || codeMatch;
+      });
+      
+      // Priority 2: Starts with match
+      if (!foundProduct) {
+        foundProduct = products.find((p) => {
+          const nameStartsWith = p.name?.toLowerCase().startsWith(searchLower);
+          const codeStartsWith = p.code?.toString().toLowerCase().startsWith(searchLower);
+          return nameStartsWith || codeStartsWith;
+        });
+      }
+      
+      // Priority 3: Code match (if numeric input)
+      if (!foundProduct && isNumeric) {
+        foundProduct = products.find(
+          (p) => p.code?.toString().toLowerCase().includes(searchLower)
+        );
+      }
+      
+      // Priority 4: Includes match (any part of name or code)
+      if (!foundProduct) {
+        foundProduct = products.find(
+          (p) => 
+            p.name?.toLowerCase().includes(searchLower) ||
+            p.code?.toString().toLowerCase().includes(searchLower)
+        );
+      }
       
       if (!foundProduct) {
         // لا نمسح الحقل إذا لم نجد منتج - نترك المستخدم يرى ما كتبه
@@ -184,7 +220,7 @@ function MainContent() {
           setSearchCode("");
         }
       }
-    }, 800); // زيادة وقت الـ debounce إلى 800ms لإعطاء المستخدم وقت لكتابة الرقم كاملاً
+    }, 2000); // زيادة وقت الـ debounce إلى 2000ms لإعطاء المستخدم وقت كافي لكتابة الاسم الكامل
 
     return () => clearTimeout(timer);
   }, [searchCode, products, cart, shop]);

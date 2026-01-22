@@ -23,49 +23,88 @@ const isOnline = () => {
 };
 
 // Helper function to get next invoice number
-// محسّن: استخدام localStorage أولاً للسرعة، ثم المزامنة مع Firebase في الخلفية
-const getNextInvoiceNumber = async () => {
+// محسّن: قراءة من جميع المصادر (localStorage و Firebase) وأخذ أكبر رقم
+const getNextInvoiceNumber = async (shop) => {
   if (typeof window === "undefined") return 1;
   
   try {
-    // استخدام localStorage أولاً للسرعة (حتى عند online)
-    const saved = localStorage.getItem("lastInvoiceNumber");
-    let currentNumber = saved ? parseInt(saved, 10) : 0;
-    const invoiceNumber = currentNumber + 1;
+    let maxInvoiceNumber = 0;
     
-    // حفظ في localStorage فوراً
-    localStorage.setItem("lastInvoiceNumber", invoiceNumber.toString());
+    // 1. قراءة من localStorage (offlineInvoices)
+    try {
+      const offlineInvoices = JSON.parse(localStorage.getItem("offlineInvoices") || "[]");
+      const shopInvoices = shop ? offlineInvoices.filter(inv => inv.shop === shop) : offlineInvoices;
+      
+      shopInvoices.forEach(inv => {
+        const invNumber = Number(inv.invoiceNumber || 0);
+        if (invNumber > maxInvoiceNumber) {
+          maxInvoiceNumber = invNumber;
+        }
+      });
+    } catch (error) {
+      console.error("Error reading offline invoices:", error);
+    }
     
-    // مزامنة مع Firebase في الخلفية (غير متزامن)
+    // 2. قراءة من Firebase (إذا كان online)
     if (isOnline()) {
-      // تحديث Firebase في الخلفية بدون انتظار
+      try {
+        const q = shop 
+          ? query(collection(db, "dailySales"), where("shop", "==", shop))
+          : collection(db, "dailySales");
+        const firebaseInvoices = await dataReader.get(q);
+        
+        firebaseInvoices.forEach(inv => {
+          const invNumber = Number(inv.invoiceNumber || 0);
+          if (invNumber > maxInvoiceNumber) {
+            maxInvoiceNumber = invNumber;
+          }
+        });
+      } catch (error) {
+        console.error("Error reading Firebase invoices:", error);
+        // نكمل بدون إيقاف العملية
+      }
+    }
+    
+    // 3. حساب الرقم التالي
+    const nextInvoiceNumber = maxInvoiceNumber + 1;
+    
+    // 4. حفظ في localStorage للاستخدام السريع في المرة القادمة
+    localStorage.setItem("lastInvoiceNumber", nextInvoiceNumber.toString());
+    
+    // 5. مزامنة مع Firebase في الخلفية (غير متزامن) - فقط للنسخ الاحتياطي
+    if (isOnline()) {
       setDoc(
         doc(db, "counters", "invoiceCounter"),
-        { lastInvoiceNumber: invoiceNumber },
+        { lastInvoiceNumber: nextInvoiceNumber },
         { merge: true }
       ).catch((error) => {
         console.error("Error syncing invoice number to Firebase:", error);
-        // إذا فشلت المزامنة، نحاول جلب الرقم من Firebase في المرة القادمة
+        // لا نوقف العملية إذا فشلت المزامنة
       });
     }
     
-    return invoiceNumber;
+    return nextInvoiceNumber;
   } catch (error) {
     console.error("Error getting invoice number:", error);
     // Fallback: استخدام localStorage فقط
-    const saved = localStorage.getItem("lastInvoiceNumber");
-    const currentNumber = saved ? parseInt(saved, 10) : 0;
-    const invoiceNumber = currentNumber + 1;
-    localStorage.setItem("lastInvoiceNumber", invoiceNumber.toString());
-    return invoiceNumber;
+    try {
+      const saved = localStorage.getItem("lastInvoiceNumber");
+      const currentNumber = saved ? parseInt(saved, 10) : 0;
+      const invoiceNumber = currentNumber + 1;
+      localStorage.setItem("lastInvoiceNumber", invoiceNumber.toString());
+      return invoiceNumber;
+    } catch (fallbackError) {
+      console.error("Error in fallback:", fallbackError);
+      return 1;
+    }
   }
 };
 
 export const invoiceService = {
   async createInvoice(cart, clientData, shop, employee) {
     try {
-      // Get next invoice number
-      const invoiceNumber = await getNextInvoiceNumber();
+      // Get next invoice number (based on actual invoices from all sources)
+      const invoiceNumber = await getNextInvoiceNumber(shop);
 
       // Calculate totals
       const total = calculateSubtotal(cart);
