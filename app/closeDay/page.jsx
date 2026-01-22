@@ -333,10 +333,10 @@ function CloseDayContent() {
       return sum + (isNaN(v) ? 0 : v);
     }, 0);
 
-    // حساب المصروفات بدون "فاتورة مرتجع" (لحساب صافي الربح)
+    // حساب المصروفات بدون "فاتورة مرتجع" و "سداد فاتورة بضاعة" (لحساب صافي الربح)
     const totalExpensesWithoutReturn = masrofArr.reduce((sum, m) => {
-      // استبعاد المصروفات التي سببها "فاتورة مرتجع"
-      if (m.reason === "فاتورة مرتجع") {
+      // استبعاد المصروفات التي سببها "فاتورة مرتجع" أو "سداد فاتورة بضاعة"
+      if (m.reason === "فاتورة مرتجع" || m.reason === "سداد فاتورة بضاعة") {
         return sum;
       }
       const v = Number(m.masrof ?? m.amount ?? 0);

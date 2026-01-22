@@ -85,8 +85,11 @@ export const closeDayService = {
         allMasrofat.forEach((masrof) => {
           netMasrof += masrof.masrof || 0;
           if (masrof.date === todayStr) {
+            // استبعاد "فاتورة مرتجع" و "سداد فاتورة بضاعة" من totalMasrofat
             if (masrof.reason === "فاتورة مرتجع") {
               returnedProfit += masrof.profit || 0;
+            } else if (masrof.reason === "سداد فاتورة بضاعة") {
+              // لا نضيفها إلى totalMasrofat ولا إلى returnedProfit
             } else {
               totalMasrofat += masrof.masrof || 0;
             }
@@ -275,8 +278,11 @@ export const closeDayService = {
       allMasrofat.forEach((masrof) => {
         netMasrof += masrof.masrof || 0;
         if (masrof.date === todayStr) {
+          // استبعاد "فاتورة مرتجع" و "سداد فاتورة بضاعة" من totalMasrofat
           if (masrof.reason === "فاتورة مرتجع") {
             returnedProfit += masrof.profit || 0;
+          } else if (masrof.reason === "سداد فاتورة بضاعة") {
+            // لا نضيفها إلى totalMasrofat ولا إلى returnedProfit
           } else {
             totalMasrofat += masrof.masrof || 0;
           }

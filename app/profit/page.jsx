@@ -339,10 +339,10 @@ function ProfitContent() {
       profitValue += reportProfit;
     });
 
-    // حساب المصروفات بدون "فاتورة مرتجع"
+    // حساب المصروفات بدون "فاتورة مرتجع" و "سداد فاتورة بضاعة"
     const totalMasrofatWithoutReturn = filteredMasrofat.reduce((sum, m) => {
-      // استبعاد المصروفات التي سببها "فاتورة مرتجع"
-      if (m.reason === "فاتورة مرتجع") {
+      // استبعاد المصروفات التي سببها "فاتورة مرتجع" أو "سداد فاتورة بضاعة"
+      if (m.reason === "فاتورة مرتجع" || m.reason === "سداد فاتورة بضاعة") {
         return sum;
       }
       return sum + Number(m.masrof || 0);

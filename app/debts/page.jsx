@@ -262,13 +262,26 @@ function DebtsContent() {
           debtid: newDebtDoc.id,
         });
 
+        // ===== تسجيل السداد في المصاريف (masrofat) =====
+        const now = new Date();
+        const formattedDate = `${String(now.getDate()).padStart(2, "0")}/${String(
+          now.getMonth() + 1
+        ).padStart(2, "0")}/${now.getFullYear()}`;
+        
+        await offlineAdd("masrofat", {
+          masrof: paymentAmountNum,
+          reason: "سداد فاتورة بضاعة",
+          date: formattedDate,
+          shop: shop,
+          debtPaymentId: paymentDoc.id,
+          customerName: form.name,
+          customerPhone: form.phone,
+        });
+
         if (form.paymentSource === "خزنة") {
-          const now = new Date();
           await offlineAdd("dailyProfit", {
             createdAt: now,
-            date: `${String(now.getDate()).padStart(2, "0")}/${String(
-              now.getMonth() + 1
-            ).padStart(2, "0")}/${now.getFullYear()}`,
+            date: formattedDate,
             shop: shop,
             totalSales: paymentAmountNum,
             type: "سداد",
@@ -518,7 +531,7 @@ function DebtsContent() {
       await offlineUpdate("debts", paymentCustomer.id, { debt: remainingDebt });
 
       // ===== تسجيل السداد في debtsPayments =====
-      const paymentDoc = await dataLayer.add("debtsPayments", {
+      const paymentDoc = await offlineAdd("debtsPayments", {
         name: debtData.name || paymentCustomer.name || "",
         phone: debtData.phone || paymentCustomer.phone || "",
         paidAmount: paid,
@@ -531,18 +544,31 @@ function DebtsContent() {
         source: paymentSource,
       });
 
+      // ===== تسجيل السداد في المصاريف (masrofat) =====
+      const now = new Date();
+      const formattedDate = `${String(now.getDate()).padStart(2, "0")}/${String(
+        now.getMonth() + 1
+      ).padStart(2, "0")}/${now.getFullYear()}`;
+      
+      await offlineAdd("masrofat", {
+        masrof: paid,
+        reason: "سداد فاتورة بضاعة",
+        date: formattedDate,
+        shop: shop,
+        debtPaymentId: paymentDoc.id || paymentDoc.queueId,
+        customerName: debtData.name || paymentCustomer.name || "",
+        customerPhone: debtData.phone || paymentCustomer.phone || "",
+      });
+
       // ===== إذا مصدر السداد خزنة، نسجل المبلغ في dailyProfit =====
       if (paymentSource === "خزنة") {
-        const now = new Date();
         await offlineAdd("dailyProfit", {
           createdAt: now,
-          date: `${String(now.getDate()).padStart(2, "0")}/${String(
-            now.getMonth() + 1
-          ).padStart(2, "0")}/${now.getFullYear()}`,
+          date: formattedDate,
           shop: shop,
           totalSales: paid,
           type: "سداد",
-          debtPaymentId: paymentDoc.id,
+          debtPaymentId: paymentDoc.id || paymentDoc.queueId,
         });
       }
 

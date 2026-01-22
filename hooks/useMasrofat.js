@@ -118,7 +118,8 @@ export function useMasrofat(shop) {
   const totalMasrofat = useMemo(
     () =>
       masrofat.reduce((sum, item) => {
-        if (item.reason === "فاتورة مرتجع") return sum;
+        // استبعاد "فاتورة مرتجع" و "سداد فاتورة بضاعة"
+        if (item.reason === "فاتورة مرتجع" || item.reason === "سداد فاتورة بضاعة") return sum;
         return sum + Number(item.masrof || 0);
       }, 0),
     [masrofat]

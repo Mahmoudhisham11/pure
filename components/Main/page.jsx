@@ -76,7 +76,7 @@ function MainContent() {
   const { products } = useProducts(shop);
   const { invoices, filterInvoices, formatDate } = useInvoices(shop);
   const { employees } = useEmployees(shop);
-  const { totalMasrofat } = useMasrofat(shop);
+  const { totalMasrofat, totalMasrofatWithReturn } = useMasrofat(shop);
   const { returnProduct, returningItemsState } = useInvoiceReturn();
   const { isOnline, pendingCount, isSyncing } = useOfflineSync();
 
@@ -744,6 +744,7 @@ function MainContent() {
         <StatsCards
           invoices={filteredInvoices}
           totalMasrofat={totalMasrofat}
+          totalMasrofatWithReturn={totalMasrofatWithReturn}
           isHidden={isHidden}
           userName={userName}
           onTopEmployeeClick={handleTopEmployeeClick}
