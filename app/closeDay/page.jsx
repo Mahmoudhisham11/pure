@@ -12,11 +12,12 @@ import {
 import { db } from "@/app/firebase";
 import Loader from "@/components/Loader/Loader";
 import { NotificationProvider, useNotification } from "@/contexts/NotificationContext";
-
-const ADMIN_USER = "mostafabeso10@gmail.com";
+import { useAppConfig } from "@/hooks/useAppConfig";
+import { CONFIG } from "@/constants/config";
 
 function CloseDayContent() {
   const { error: showError } = useNotification();
+  const { config: appConfig } = useAppConfig();
   const [dateISO, setDateISO] = useState(() => {
     const d = new Date();
     return d.toISOString().split("T")[0];
@@ -308,7 +309,7 @@ function CloseDayContent() {
   // Calculate totals with useMemo
   const totals = useMemo(() => {
     if (!selectedClose)
-      return { totalSales: 0, totalExpenses: 0, net: 0, profit: 0, netProfit: 0 };
+      return { totalSales: 0, totalExpenses: 0, net: 0 };
 
     const salesArr = Array.isArray(selectedClose.sales)
       ? selectedClose.sales
@@ -322,34 +323,18 @@ function CloseDayContent() {
       return sum + (isNaN(v) ? 0 : v);
     }, 0);
 
-    const profit = salesArr.reduce((sum, s) => {
-      const p = Number(s.profit ?? 0);
-      return sum + (isNaN(p) ? 0 : p);
-    }, 0);
-
     // حساب إجمالي المصروفات (شامل كل المصروفات)
     const totalExpenses = masrofArr.reduce((sum, m) => {
       const v = Number(m.masrof ?? m.amount ?? 0);
       return sum + (isNaN(v) ? 0 : v);
     }, 0);
 
-    // حساب المصروفات بدون "فاتورة مرتجع" و "سداد فاتورة بضاعة" (لحساب صافي الربح)
-    const totalExpensesWithoutReturn = masrofArr.reduce((sum, m) => {
-      // استبعاد المصروفات التي سببها "فاتورة مرتجع" أو "سداد فاتورة بضاعة"
-      if (m.reason === "فاتورة مرتجع" || m.reason === "سداد فاتورة بضاعة") {
-        return sum;
-      }
-      const v = Number(m.masrof ?? m.amount ?? 0);
-      return sum + (isNaN(v) ? 0 : v);
-    }, 0);
-
     const net = totalSales - totalExpenses;
-    const netProfit = profit - totalExpensesWithoutReturn;
 
-    return { totalSales, totalExpenses, net, profit, netProfit };
+    return { totalSales, totalExpenses, net };
   }, [selectedClose]);
 
-  const isAdmin = currentUser === ADMIN_USER;
+  const isAdmin = CONFIG.ADMIN_EMAILS.includes(currentUser);
 
   // Render sales rows
   const renderSalesRows = useCallback(
@@ -358,7 +343,7 @@ function CloseDayContent() {
         return (
           <tr>
             <td
-              colSpan={isAdmin ? 6 : 5}
+              colSpan={5}
               className={styles.emptyCell}
             >
               <div className={styles.emptyState}>
@@ -372,7 +357,6 @@ function CloseDayContent() {
       return salesArr.map((sale, index) => {
         const invoice = sale.invoiceNumber ?? sale.id ?? `sale-${index}`;
         const total = sale.total ?? sale.subtotal ?? 0;
-        const profit = sale.profit ?? 0;
         const employee = sale.employee ?? sale.closedBy ?? "-";
         const date = sale.date?.toDate
           ? sale.date.toDate().toLocaleString("ar-EG")
@@ -411,14 +395,11 @@ function CloseDayContent() {
               {sale.cart ? sale.cart.map((i) => i.name).join(", ") : "-"}
             </td>
             <td className={styles.totalCell}>{total.toFixed(2)} EGP</td>
-            {isAdmin && (
-              <td className={styles.profitCell}>{profit.toFixed(2)} EGP</td>
-            )}
           </tr>
         );
       });
     },
-    [isAdmin, selectedInvoice]
+    [selectedInvoice]
   );
 
   // Render expense rows
@@ -564,23 +545,6 @@ function CloseDayContent() {
               </span>
             </div>
 
-            {isAdmin && (
-              <>
-                <div className={styles.summaryCard}>
-                  <span className={styles.summaryLabel}>الربح</span>
-                  <span className={styles.summaryValue}>
-                    {totals.profit.toFixed(2)} EGP
-                  </span>
-                </div>
-                <div className={styles.summaryCard}>
-                  <span className={styles.summaryLabel}>صافي الربح</span>
-                  <span className={styles.summaryValue}>
-                    {totals.netProfit.toFixed(2)} EGP
-                  </span>
-                </div>
-              </>
-            )}
-
             <div className={styles.summaryCard}>
               <span className={styles.summaryLabel}>قفل بواسطة</span>
               <span className={styles.summaryValue}>
@@ -626,7 +590,6 @@ function CloseDayContent() {
                   <th>الوقت</th>
                   <th>المنتجات</th>
                   <th>الإجمالي</th>
-                  {isAdmin && <th>الربح</th>}
                 </tr>
               ) : (
                 <tr>
@@ -642,7 +605,7 @@ function CloseDayContent() {
               {!selectedClose ? (
                 <tr>
                   <td
-                    colSpan={showSales ? (isAdmin ? 6 : 5) : 4}
+                    colSpan={showSales ? 5 : 4}
                     className={styles.emptyCell}
                   >
                     <div className={styles.emptyState}>
