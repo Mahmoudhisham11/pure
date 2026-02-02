@@ -78,9 +78,9 @@ export const closeDayService = {
           totalSales += sale.total || 0;
         });
 
-        let totalMasrofat = 0;
+        let totalMasrofat = 0; // فقط مصروفات الدرج (تُخصم من المبيعات اليومية)
         let returnedProfit = 0;
-        let netMasrof = 0;
+        let netMasrof = 0; // جميع المصروفات (من الخزنة والدرج)
 
         allMasrofat.forEach((masrof) => {
           netMasrof += masrof.masrof || 0;
@@ -91,7 +91,11 @@ export const closeDayService = {
             } else if (masrof.reason === "سداد فاتورة بضاعة") {
               // لا نضيفها إلى totalMasrofat ولا إلى returnedProfit
             } else {
-              totalMasrofat += masrof.masrof || 0;
+              // نضيف فقط مصروفات الدرج إلى totalMasrofat
+              // مصروفات الخزنة تُخصم من الخزنة مباشرة وليس من المبيعات اليومية
+              if (masrof.source !== "خزنة") {
+                totalMasrofat += masrof.masrof || 0;
+              }
             }
           }
         });
@@ -271,9 +275,9 @@ export const closeDayService = {
         totalSales += sale.total || 0;
       });
 
-      let totalMasrofat = 0;
+      let totalMasrofat = 0; // فقط مصروفات الدرج (تُخصم من المبيعات اليومية)
       let returnedProfit = 0;
-      let netMasrof = 0;
+      let netMasrof = 0; // جميع المصروفات (من الخزنة والدرج)
 
       allMasrofat.forEach((masrof) => {
         netMasrof += masrof.masrof || 0;
@@ -284,7 +288,11 @@ export const closeDayService = {
           } else if (masrof.reason === "سداد فاتورة بضاعة") {
             // لا نضيفها إلى totalMasrofat ولا إلى returnedProfit
           } else {
-            totalMasrofat += masrof.masrof || 0;
+            // نضيف فقط مصروفات الدرج إلى totalMasrofat
+            // مصروفات الخزنة تُخصم من الخزنة مباشرة وليس من المبيعات اليومية
+            if (masrof.source !== "خزنة") {
+              totalMasrofat += masrof.masrof || 0;
+            }
           }
         }
       });

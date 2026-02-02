@@ -12,6 +12,7 @@ export default function PriceModal({
   onClose,
   product,
   onAddToCart,
+  cart = [],
 }) {
   const { error: showError } = useNotification();
   const [price, setPrice] = useState(0);
@@ -50,14 +51,30 @@ export default function PriceModal({
     }
 
     // Check available quantity للمنتجات البسيطة بالاعتماد على البيانات الممررة فقط (بدون Firestore)
+    // التحقق من المخزون على أساس المجموع الكلي (الكمية الموجودة في السلة + الكمية الجديدة)
     if (product.id) {
       try {
         const available = getAvailableQuantity(product, null, null);
         const requestedQty = 1;
 
-        if (requestedQty > available) {
+        // Calculate quantity already in cart for the same product variant
+        const existingInCart = cart
+          .filter(item => 
+            item.originalProductId === product.id &&
+            !item.color &&
+            !item.size
+          )
+          .reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+        // Check if requested quantity (including existing in cart) exceeds available
+        const totalRequested = existingInCart + requestedQty;
+        if (totalRequested > available) {
+          const canAdd = available - existingInCart;
           showError(
-            `⚠️ الكمية المطلوبة (${requestedQty}) أكبر من المتاح\nالكمية المتاحة: ${available}`
+            `⚠️ الكمية المطلوبة (${totalRequested}) أكبر من المتاح (${available})\n` +
+            `الكمية في السلة: ${existingInCart}\n` +
+            `الكمية المتاحة: ${available}\n` +
+            `يمكن إضافة: ${canAdd > 0 ? canAdd : 0}`
           );
           setPendingPrice(null);
           return;
@@ -105,25 +122,57 @@ export default function PriceModal({
     <div className={styles.popupOverlay} onClick={onClose}>
       <div className={styles.popupBox} onClick={(e) => e.stopPropagation()}>
         <h3>تحديد السعر — {product.name}</h3>
-        <label>السعر:</label>
-        <input
-          type="number"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          placeholder={`أدخل سعر ≥ ${product.finalPrice}`}
-          className={styles.modalInput}
-        />
-        <div className={styles.priceInfo}>
-          <p>السعر النهائي: {product.finalPrice} EGP</p>
-          <p>السعر الافتراضي: {product.sellPrice} EGP</p>
+        
+        <div className={styles.popupBoxContent}>
+          <div className={styles.priceInput}>
+            <label>السعر:</label>
+            <input
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder={`أدخل سعر ≥ ${product.finalPrice}`}
+              className={styles.modalInput}
+              autoFocus
+            />
+          </div>
+          
+          <div className={styles.priceInfo}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              padding: '8px 0',
+              borderBottom: '1px solid var(--border-color)',
+              marginBottom: '8px'
+            }}>
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>السعر النهائي:</span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '16px' }}>
+                {product.finalPrice} EGP
+              </span>
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              padding: '8px 0'
+            }}>
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>السعر الافتراضي:</span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '16px' }}>
+                {product.sellPrice} EGP
+              </span>
+            </div>
+          </div>
         </div>
-        <div className={styles.popupBtns}>
-          <button onClick={onClose} className={styles.cancelBtn}>
-            إلغاء
-          </button>
-          <button onClick={handleAdd} className={styles.addBtn}>
-            أضف للسلة
-          </button>
+        
+        <div className={styles.popupBoxFooter}>
+          <div className={styles.popupBtns}>
+            <button onClick={onClose} className={styles.cancelBtn}>
+              إلغاء
+            </button>
+            <button onClick={handleAdd} className={styles.addBtn}>
+              أضف للسلة
+            </button>
+          </div>
         </div>
       </div>
 

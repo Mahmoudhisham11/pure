@@ -1275,13 +1275,16 @@
 /* Input Modal Styles */
 .inputModal {
   width: 90%;
-  max-width: 500px;
+  max-width: 480px;
   background: var(--surface);
-  border-radius: 16px;
-  box-shadow: var(--shadow-lg);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-color);
   animation: slideUp 0.3s ease;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-family: "Cairo", sans-serif;
 }
 
 .inputModalContent {
@@ -1319,22 +1322,23 @@
 
 .modalInput {
   width: 100%;
-  padding: 14px 18px;
+  padding: 14px 16px;
   font-size: 16px;
   font-family: "Tajawal", sans-serif;
   color: var(--text-primary);
-  background: var(--surface);
+  background: var(--input-bg);
   border: 2px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 10px;
   outline: none;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-sizing: border-box;
+  box-shadow: var(--shadow-sm);
 }
 
 .modalInput:focus {
   border-color: var(--main-color);
-  box-shadow: 0 0 0 3px rgba(var(--main-color-rgb, 74, 144, 226), 0.1);
-  background: var(--surface-hover);
+  box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.15), var(--shadow-md);
+  background: var(--surface);
 }
 
 .modalInput::placeholder {
@@ -1344,6 +1348,7 @@
 
 .modalInput:hover {
   border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .inputModalFooter {

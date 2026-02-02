@@ -314,6 +314,20 @@ function ProfitContent() {
 
     let remainingCash = totalCash - totalMasrofat;
 
+    // خصم المصروفات من الخزنة من الخزنة
+    const masrofatFromTreasury = filteredMasrofat.filter((m) => {
+      const mDate = parseDate(m.date) || parseDate(m.createdAt);
+      return mDate && mDate >= from && mDate <= to && m.source === "خزنة";
+    });
+    const totalMasrofatFromTreasury = masrofatFromTreasury.reduce((sum, m) => {
+      // استبعاد "فاتورة مرتجع" و "سداد فاتورة بضاعة"
+      if (m.reason === "فاتورة مرتجع" || m.reason === "سداد فاتورة بضاعة") {
+        return sum;
+      }
+      return sum + Number(m.masrof || 0);
+    }, 0);
+    remainingCash -= totalMasrofatFromTreasury;
+
     filteredWithdraws.forEach((w) => {
       const remaining = Number(w.amount || 0) - Number(w.paid || 0);
       if (w.person === "الخزنة") {
@@ -339,23 +353,16 @@ function ProfitContent() {
       profitValue += reportProfit;
     });
 
-    // حساب المصروفات بدون "فاتورة مرتجع" و "سداد فاتورة بضاعة"
-    const totalMasrofatWithoutReturn = filteredMasrofat.reduce((sum, m) => {
-      // استبعاد المصروفات التي سببها "فاتورة مرتجع" أو "سداد فاتورة بضاعة"
-      if (m.reason === "فاتورة مرتجع" || m.reason === "سداد فاتورة بضاعة") {
-        return sum;
-      }
-      return sum + Number(m.masrof || 0);
-    }, 0);
-
-    // حساب صافي الربح = مجموع أرباح كل فاتورة - المصروفات (بدون فاتورة مرتجع)
-    const netProfitValue = profitValue - totalMasrofatWithoutReturn;
-
-    let remainingProfit = profitValue;
+    // حساب المصروفات من dailyProfit (هذه هي المصروفات التي تم تقفيلها)
     const totalMasrofatT = filteredDaily.reduce(
       (sum, d) => sum + Number(d.totalMasrofat || 0),
       0
     );
+
+    // حساب صافي الربح = مجموع أرباح كل فاتورة - المصروفات من dailyProfit
+    const netProfitValue = profitValue - totalMasrofatT;
+
+    let remainingProfit = profitValue;
     remainingProfit -= totalMasrofatT;
 
     filteredWithdraws.forEach((w) => {

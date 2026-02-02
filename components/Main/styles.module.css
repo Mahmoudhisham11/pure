@@ -1026,12 +1026,12 @@
 .popupBox {
   background: var(--surface);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 0;
-  width: 420px;
+  width: 480px;
   max-width: 90%;
   max-height: 90vh;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
   animation: slideUp 0.3s ease;
   font-family: "Cairo", sans-serif;
   display: flex;
@@ -1041,29 +1041,44 @@
 
 .popupBox h3 {
   margin: 0;
-  padding: 20px 24px;
-  font-size: 1.3rem;
+  padding: 24px;
+  font-size: 1.4rem;
   font-weight: 700;
   color: var(--text-primary);
   text-align: center;
   border-bottom: 1px solid var(--border-color);
-  background: var(--surface-hover);
+  background: linear-gradient(135deg, var(--surface-hover) 0%, var(--surface) 100%);
   flex-shrink: 0;
+  letter-spacing: 0.3px;
+  position: relative;
+}
+
+.popupBox h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--main-color), transparent);
+  border-radius: 2px;
 }
 
 .popupBoxContent {
-  padding: 20px 24px;
+  padding: 24px;
   overflow-y: auto;
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  background: var(--surface);
 }
 
 .popupBoxFooter {
-  padding: 16px 24px;
+  padding: 20px 24px;
   border-top: 1px solid var(--border-color);
-  background: var(--surface-hover);
+  background: linear-gradient(135deg, var(--surface-hover) 0%, var(--surface) 100%);
   flex-shrink: 0;
 }
 
@@ -1173,19 +1188,48 @@
 
 .popupBtns {
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .popupBtns button {
-  flex: 1;
-  padding: 10px;
+  min-width: 120px;
+  padding: 12px 24px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 15px;
   cursor: pointer;
   font-weight: 600;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
+}
+
+.popupBtns .cancelBtn {
+  background-color: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.popupBtns .cancelBtn:hover {
+  background-color: var(--surface-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.popupBtns .addBtn {
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  color: white;
+  border: none;
+}
+
+.popupBtns .addBtn:hover {
+  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.popupBtns .addBtn:active {
+  transform: translateY(0);
 }
 
 .popupMessage {
@@ -1194,6 +1238,7 @@
   line-height: 1.7;
   color: var(--text-secondary);
   text-align: center;
+  padding: 8px 0;
 }
 
 /* ============================================
@@ -1202,19 +1247,28 @@
 
 .modalInput {
   width: 100%;
-  padding: 12px;
-  border: var(--modal-button-border-input);
-  border-radius: 8px;
-  font-size: 16px;
-  color: var(--text-color);
+  padding: 14px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
   background-color: var(--input-bg);
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.modalInput:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .modalInput:focus {
   border-color: var(--main-color);
-  box-shadow: var(--modal-button-shadow-input-focus);
+  box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.15), var(--shadow-md);
   outline: none;
+  background-color: var(--surface);
 }
 
 .modalSelect {
@@ -1362,32 +1416,52 @@
 }
 
 .priceInput {
-  margin-top: 12px;
+  margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
 .priceInput label {
-  color: var(--text-color);
-  font-weight: 500;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
 }
 
 .priceInput input {
   width: 100%;
-  padding: 12px;
-  border: var(--modal-button-border-input);
-  border-radius: 8px;
-  font-size: 16px;
-  color: var(--text-color);
+  padding: 14px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
   background-color: var(--input-bg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.priceInput input:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.priceInput input:focus {
+  border-color: var(--main-color);
+  box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.15), var(--shadow-md);
+  outline: none;
+  background-color: var(--surface);
 }
 
 .priceInfo {
-  margin-top: 8px;
-  padding: 12px;
-  background-color: var(--modal-section-bg);
-  border-radius: 8px;
+  margin-top: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--surface-hover) 0%, var(--card-bg) 100%);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .priceInfo p {
@@ -1398,9 +1472,8 @@
 
 .modalActions {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   justify-content: flex-end;
-  margin-top: 12px;
 }
 
 .emptyMessage {
@@ -1698,16 +1771,25 @@
 }
 
 .confirmBtn {
-  background-color: var(--main-color) !important;
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%) !important;
   color: white !important;
+  border: none !important;
+}
+
+.confirmBtn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md) !important;
 }
 
 .confirmBtn.danger {
-  background-color: var(--button-bg-red) !important;
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%) !important;
 }
 
-.confirmBtn.danger:hover {
-  background-color: var(--button-bg-red-hover) !important;
+.confirmBtn.danger:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md) !important;
 }
 
 .confirmBtn:disabled,

@@ -12,6 +12,7 @@ export default function VariantModal({
   onClose,
   product,
   onAddToCart,
+  cart = [],
 }) {
   const { error: showError } = useNotification();
   const [selectedColor, setSelectedColor] = useState("");
@@ -91,9 +92,24 @@ export default function VariantModal({
       // استخدام بيانات المنتج الممررة فقط بدون قراءة من Firestore
       const available = getAvailableQuantity(product, selectedColor, e.size);
 
-      if (e.qty > available) {
+      // Calculate quantity already in cart for the same product variant
+      const existingInCart = cart
+        .filter(item => 
+          item.originalProductId === product.id &&
+          (item.color || "") === (selectedColor || "") &&
+          (item.size || "") === (e.size || "")
+        )
+        .reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+      // Check if requested quantity (including existing in cart) exceeds available
+      const totalRequested = existingInCart + e.qty;
+      if (totalRequested > available) {
+        const canAdd = available - existingInCart;
         showError(
-          `⚠️ الكمية المطلوبة للمقاس ${e.size} (${e.qty}) أكبر من المتاح\nالكمية المتاحة: ${available}`
+          `⚠️ الكمية المطلوبة للمقاس ${e.size} (${totalRequested}) أكبر من المتاح (${available})\n` +
+          `الكمية في السلة: ${existingInCart}\n` +
+          `الكمية المتاحة: ${available}\n` +
+          `يمكن إضافة: ${canAdd > 0 ? canAdd : 0}`
         );
         continue;
       }
@@ -256,7 +272,7 @@ export default function VariantModal({
         </div>
 
         <div className={styles.popupBoxFooter}>
-          <div className={styles.modalActions}>
+          <div className={styles.popupBtns}>
             <button onClick={onClose} className={styles.cancelBtn}>
               إلغاء
             </button>

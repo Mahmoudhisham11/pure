@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import Loader from "@/components/Loader/Loader";
 import { NotificationProvider, useNotification } from "@/contexts/NotificationContext";
 import ConfirmModal from "@/components/Main/Modals/ConfirmModal";
+import { CONFIG } from "@/constants/config";
 
 function MasrofatContent() {
   const router = useRouter();
@@ -47,6 +48,8 @@ function MasrofatContent() {
   const [editMode, setEditMode] = useState("add"); // "add" or "subtract"
   const [showEditModal, setShowEditModal] = useState(false);
   const [editAmount, setEditAmount] = useState("");
+  const [expenseSource, setExpenseSource] = useState("درج"); // "خزنة" or "درج"
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // التحقق من الصلاحيات
   useEffect(() => {
@@ -56,6 +59,9 @@ function MasrofatContent() {
         router.push("/");
         return;
       }
+      // التحقق من أن المستخدم هو admin
+      setIsAdmin(CONFIG.ADMIN_EMAILS.includes(userName));
+      
       const q = query(
         collection(db, "users"),
         where("userName", "==", userName)
@@ -209,6 +215,48 @@ function MasrofatContent() {
     setSelectedIds(new Set());
   }, [filteredMasrofat]);
 
+  // جلب رصيد الخزنة
+  const getTreasuryBalance = async () => {
+    try {
+      const q = query(
+        collection(db, "dailyProfit"),
+        where("shop", "==", shop)
+      );
+      const docs = await dataReader.get(q);
+
+      let totalSales = 0;
+      let totalMasrofatFromDrawer = 0;
+      let totalMasrofatFromTreasury = 0;
+      let totalSaddad = 0;
+
+      docs.forEach((doc) => {
+        const data = doc;
+        if (data.type === "سداد") {
+          totalSaddad += Number(data.totalSales || 0);
+        } else {
+          totalSales += Number(data.totalSales || 0);
+        }
+        // حساب المصروفات من dailyProfit (هذه هي المصروفات التي تم تقفيلها)
+        totalMasrofatFromDrawer += Number(data.totalMasrofat || 0);
+      });
+
+      // حساب المصروفات من الخزنة من masrofat الحالية
+      const treasuryMasrofat = masrofatList.filter(
+        (m) => m.source === "خزنة"
+      );
+      totalMasrofatFromTreasury = treasuryMasrofat.reduce(
+        (sum, m) => sum + Number(m.masrof || 0),
+        0
+      );
+
+      const balance = totalSales - totalMasrofatFromDrawer - totalMasrofatFromTreasury - totalSaddad;
+      return balance;
+    } catch (error) {
+      console.error("Error getting treasury balance:", error);
+      return 0;
+    }
+  };
+
   // إضافة مصروف جديد
   const handleAddMasrof = async () => {
     // في حالة المرتجع، السبب تلقائي
@@ -230,21 +278,6 @@ function MasrofatContent() {
       return;
     }
 
-    const totalMasrofToday = masrofatList.reduce(
-      (acc, item) => acc + Number(item.masrof || 0),
-      0
-    );
-
-    // حساب الرصيد المتاح
-    const availableAmount = dailySales - totalMasrofToday;
-
-    if (masrofValue > availableAmount) {
-      showError(
-        `❌ الرصيد الحالي غير كافٍ لإضافة هذا المصروف.\nالرصيد المتاح: ${availableAmount.toFixed(2)}\nالمبلغ المطلوب: ${masrofValue.toFixed(2)}`
-      );
-      return;
-    }
-
     const now = new Date();
     const formattedDate = `${now.getDate().toString().padStart(2, "0")}/${(
       now.getMonth() + 1
@@ -252,12 +285,62 @@ function MasrofatContent() {
       .toString()
       .padStart(2, "0")}/${now.getFullYear()}`;
 
+    // التحقق من الرصيد حسب المصدر
+    if (expenseSource === "خزنة") {
+      // التحقق من رصيد الخزنة
+      const treasuryBalance = await getTreasuryBalance();
+      
+      // حساب المصروفات من الخزنة اليوم
+      const treasuryMasrofatToday = masrofatList.filter(
+        (m) => m.source === "خزنة" && m.date === formattedDate
+      );
+      const totalTreasuryMasrofToday = treasuryMasrofatToday.reduce(
+        (sum, m) => sum + Number(m.masrof || 0),
+        0
+      );
+
+      const availableTreasury = treasuryBalance - totalTreasuryMasrofToday;
+
+      // عرض معلومات الخزنة قبل التحقق
+      if (masrofValue > availableTreasury) {
+        showError(
+          `❌ رصيد الخزنة غير كافٍ لإضافة هذا المصروف.\n\n` +
+          `رصيد الخزنة الحالي: ${treasuryBalance.toFixed(2)} EGP\n` +
+          `المصروفات اليومية من الخزنة: ${totalTreasuryMasrofToday.toFixed(2)} EGP\n` +
+          `الرصيد المتاح: ${availableTreasury.toFixed(2)} EGP\n` +
+          `المبلغ المطلوب: ${masrofValue.toFixed(2)} EGP`
+        );
+        return;
+      }
+      
+    } else {
+      // التحقق من المبيعات اليومية (الدرج)
+      const totalMasrofToday = masrofatList.reduce(
+        (acc, item) => {
+          // نحسب فقط مصروفات الدرج
+          if (item.source === "خزنة") return acc;
+          return acc + Number(item.masrof || 0);
+        },
+        0
+      );
+
+      const availableAmount = dailySales - totalMasrofToday;
+
+      if (masrofValue > availableAmount) {
+        showError(
+          `❌ الرصيد الحالي غير كافٍ لإضافة هذا المصروف.\nالرصيد المتاح: ${availableAmount.toFixed(2)}\nالمبلغ المطلوب: ${masrofValue.toFixed(2)}`
+        );
+        return;
+      }
+    }
+
     try {
       const masrofData = {
         masrof: masrofValue,
         reason: finalReason,
         date: formattedDate,
         shop,
+        source: expenseSource, // إضافة حقل المصدر
       };
 
       const result = await offlineAdd("masrofat", masrofData);
@@ -269,6 +352,7 @@ function MasrofatContent() {
 
       setMasrof("");
       setReason("");
+      setExpenseSource("درج"); // إعادة تعيين المصدر
       setActive(false);
       setIsReturnExpense(false);
     } catch (error) {
@@ -302,18 +386,59 @@ function MasrofatContent() {
       newMasrof = Math.max(0, currentMasrof - editValue);
     }
 
-    // التحقق من الرصيد المتاح
-    const totalMasrofToday = masrofatList.reduce(
-      (acc, item) => acc + (item.id === editingMasrof.id ? 0 : Number(item.masrof || 0)),
-      0
-    );
-    const availableAmount = dailySales - totalMasrofToday;
-
-    if (newMasrof > availableAmount) {
-      showError(
-        `❌ الرصيد الحالي غير كافٍ.\nالرصيد المتاح: ${availableAmount.toFixed(2)}\nالمبلغ المطلوب بعد التعديل: ${newMasrof.toFixed(2)}`
+    // التحقق من الرصيد المتاح حسب المصدر
+    const masrofSource = editingMasrof.source || "درج"; // القيمة الافتراضية للتوافق مع الكود القديم
+    
+    if (masrofSource === "خزنة") {
+      // التحقق من رصيد الخزنة
+      const treasuryBalance = await getTreasuryBalance();
+      
+      const now = new Date();
+      const todayStr = `${now.getDate().toString().padStart(2, "0")}/${(
+        now.getMonth() + 1
+      )
+        .toString()
+        .padStart(2, "0")}/${now.getFullYear()}`;
+      
+      const treasuryMasrofatToday = masrofatList.filter(
+        (m) => m.source === "خزنة" && m.date === todayStr && m.id !== editingMasrof.id
       );
-      return;
+      const totalTreasuryMasrofToday = treasuryMasrofatToday.reduce(
+        (sum, m) => sum + Number(m.masrof || 0),
+        0
+      );
+
+      const availableTreasury = treasuryBalance - totalTreasuryMasrofToday;
+
+      if (newMasrof > availableTreasury) {
+        showError(
+          `❌ رصيد الخزنة غير كافٍ.\n\n` +
+          `رصيد الخزنة الحالي: ${treasuryBalance.toFixed(2)} EGP\n` +
+          `المصروفات اليومية من الخزنة: ${totalTreasuryMasrofToday.toFixed(2)} EGP\n` +
+          `الرصيد المتاح: ${availableTreasury.toFixed(2)} EGP\n` +
+          `المبلغ المطلوب بعد التعديل: ${newMasrof.toFixed(2)} EGP`
+        );
+        return;
+      }
+    } else {
+      // التحقق من المبيعات اليومية (الدرج)
+      const totalMasrofToday = masrofatList.reduce(
+        (acc, item) => {
+          if (item.id === editingMasrof.id) return acc;
+          // نحسب فقط مصروفات الدرج
+          if (item.source === "خزنة") return acc;
+          return acc + Number(item.masrof || 0);
+        },
+        0
+      );
+      const availableAmount = dailySales - totalMasrofToday;
+
+      if (newMasrof > availableAmount) {
+        showError(
+          `❌ الرصيد الحالي غير كافٍ.\nالرصيد المتاح: ${availableAmount.toFixed(2)}\nالمبلغ المطلوب بعد التعديل: ${newMasrof.toFixed(2)}`
+        );
+        return;
+      }
     }
 
     try {
@@ -436,22 +561,11 @@ function MasrofatContent() {
                 setEditingMasrof(null);
                 setMasrof("");
                 setReason("");
+                setExpenseSource("درج");
               }}
               className={styles.addBtn}
             >
               {active ? "إلغاء" : "+ إضافة مصروف"}
-            </button>
-            <button
-              onClick={() => {
-                setActive(true);
-                setIsReturnExpense(true);
-                setEditingMasrof(null);
-                setMasrof("");
-                setReason("");
-              }}
-              className={styles.returnBtn}
-            >
-              مصروف مرتجع
             </button>
           </div>
         </div>
@@ -524,6 +638,21 @@ function MasrofatContent() {
                   />
                 </div>
               )}
+              {isAdmin && (
+                <div className="inputContainer">
+                  <label>
+                    <GiReceiveMoney />
+                  </label>
+                  <select
+                    value={expenseSource}
+                    onChange={(e) => setExpenseSource(e.target.value)}
+                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
+                  >
+                    <option value="درج">من الدرج</option>
+                    <option value="خزنة">من الخزنة</option>
+                  </select>
+                </div>
+              )}
             </div>
             <div className={styles.actionButtonsContainer}>
               <button className={styles.addBtn} onClick={handleAddMasrof}>
@@ -565,6 +694,7 @@ function MasrofatContent() {
                   </th>
                   <th>المصروف</th>
                   <th>السبب</th>
+                  <th>المصدر</th>
                   <th>التاريخ</th>
                   <th>خيارات</th>
                 </tr>
@@ -572,7 +702,7 @@ function MasrofatContent() {
               <tbody>
                 {filteredMasrofat.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className={styles.emptyCell}>
+                    <td colSpan={6} className={styles.emptyCell}>
                       <div className={styles.emptyState}>
                         <p>❌ لا توجد مصروفات</p>
                       </div>
@@ -601,6 +731,9 @@ function MasrofatContent() {
                         {item.masrof} EGP
                       </td>
                       <td className={styles.reasonCell}>{item.reason}</td>
+                      <td className={styles.sourceCell}>
+                        {item.source === "خزنة" ? "خزنة" : "درج"}
+                      </td>
                       <td className={styles.dateCell}>{item.date}</td>
                       <td className={styles.actionsCell}>
                         <div className={styles.actionButtons}>

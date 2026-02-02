@@ -120,6 +120,9 @@ export function useMasrofat(shop) {
       masrofat.reduce((sum, item) => {
         // استبعاد "فاتورة مرتجع" و "سداد فاتورة بضاعة"
         if (item.reason === "فاتورة مرتجع" || item.reason === "سداد فاتورة بضاعة") return sum;
+        // استبعاد المصروفات من الخزنة (نحسب فقط مصروفات الدرج)
+        if (item.source === "خزنة") return sum;
+        // القيمة الافتراضية للمصروفات القديمة: "درج" (للتوافق مع الكود القديم)
         return sum + Number(item.masrof || 0);
       }, 0),
     [masrofat]

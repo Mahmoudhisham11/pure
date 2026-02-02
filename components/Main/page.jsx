@@ -204,21 +204,11 @@ function MainContent() {
         // مسح الحقل بعد فتح الـ modal
         setSearchCode("");
       } else {
-        const alreadyInCart = cart.some(
-          (item) =>
-            item.originalProductId === foundProduct.id &&
-            !item.color &&
-            !item.size
-        );
-        if (!alreadyInCart) {
-          setVariantProduct(foundProduct);
-          setShowPricePopup(true);
-          // مسح الحقل بعد فتح الـ modal
-          setSearchCode("");
-        } else {
-          // المنتج موجود في السلة بالفعل - نمسح الحقل
-          setSearchCode("");
-        }
+        // السماح بإضافة المنتج دائماً مع فتح نافذة السعر
+        setVariantProduct(foundProduct);
+        setShowPricePopup(true);
+        // مسح الحقل بعد فتح الـ modal
+        setSearchCode("");
       }
     }, 2000); // زيادة وقت الـ debounce إلى 2000ms لإعطاء المستخدم وقت كافي لكتابة الاسم الكامل
 
@@ -812,6 +802,7 @@ function MainContent() {
         }}
         product={variantProduct}
         onAddToCart={handleAddToCart}
+        cart={cart}
       />
 
       <PriceModal
@@ -823,6 +814,7 @@ function MainContent() {
         }}
         product={variantProduct}
         onAddToCart={handleAddToCart}
+        cart={cart}
       />
 
       <ConfirmModal

@@ -25,15 +25,10 @@ export function useProductSearch(products, cart, onOpenVariant, onAddToCart) {
       if (hasVariants) {
         onOpenVariant(foundProduct);
       } else {
-        const alreadyInCart = cart.some(
-          (item) =>
-            item.originalProductId === foundProduct.id &&
-            !item.color &&
-            !item.size
-        );
-        if (!alreadyInCart) {
-          onAddToCart(foundProduct, { quantity: 1 });
-        }
+        // السماح بإضافة المنتج دائماً - لكن useProductSearch لا يفتح نافذة السعر
+        // يجب أن نمرر callback لفتح نافذة السعر أو نستخدم onAddToCart مباشرة
+        // في هذه الحالة، سنستخدم onAddToCart مباشرة مع السعر الافتراضي
+        onAddToCart(foundProduct, { quantity: 1 });
       }
 
       setSearchCode("");

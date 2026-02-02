@@ -44,31 +44,36 @@ export default function SuspendInvoiceModal({
     <div className={styles.popupOverlay} onClick={onClose}>
       <div className={styles.popupBox} onClick={(e) => e.stopPropagation()}>
         <h3>تعليق الفاتورة</h3>
-        <p style={{ margin: "10px 0", color: "var(--text-secondary)" }}>
-          أدخل اسم العميل لتعليق الفاتورة
-        </p>
-        <div style={{ margin: "20px 0" }}>
-          <label style={{ display: "block", marginBottom: "8px", color: "var(--text-label)" }}>
-            اسم العميل:
-          </label>
-          <input
-            ref={inputRef}
-            type="text"
-            value={clientName}
-            onChange={(e) => setClientName(e.target.value)}
-            onKeyDown={handleKeyPress}
-            className={styles.modalInput}
-            placeholder="أدخل اسم العميل"
-            autoFocus
-          />
+        
+        <div className={styles.popupBoxContent}>
+          <p className={styles.popupMessage}>
+            أدخل اسم العميل لتعليق الفاتورة
+          </p>
+          
+          <div className={styles.priceInput}>
+            <label>اسم العميل:</label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              onKeyDown={handleKeyPress}
+              className={styles.modalInput}
+              placeholder="أدخل اسم العميل"
+              autoFocus
+            />
+          </div>
         </div>
-        <div className={styles.popupBtns}>
-          <button onClick={onClose} className={styles.cancelBtn}>
-            إلغاء
-          </button>
-          <button onClick={handleConfirm} className={styles.addBtn} disabled={!clientName.trim()}>
-            تعليق الفاتورة
-          </button>
+        
+        <div className={styles.popupBoxFooter}>
+          <div className={styles.popupBtns}>
+            <button onClick={onClose} className={styles.cancelBtn}>
+              إلغاء
+            </button>
+            <button onClick={handleConfirm} className={styles.addBtn} disabled={!clientName.trim()}>
+              تعليق الفاتورة
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -44,34 +44,51 @@ export default function PasswordModal({
     <div className={styles.popupOverlay} onClick={onClose}>
       <div className={styles.popupBox} onClick={(e) => e.stopPropagation()}>
         <h3>{title}</h3>
-        {message && <p style={{ margin: "10px 0", color: "var(--text-secondary)" }}>{message}</p>}
-        {finalPrice && (
-          <p style={{ margin: "10px 0", fontSize: "14px", color: "var(--text-tertiary)" }}>
-            السعر النهائي: {finalPrice} EGP
-          </p>
-        )}
-        <div style={{ margin: "20px 0" }}>
-          <label style={{ display: "block", marginBottom: "8px", color: "var(--text-label)" }}>
-            كلمة المرور:
-          </label>
-          <input
-            ref={inputRef}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={handleKeyPress}
-            className={styles.modalInput}
-            placeholder="أدخل كلمة المرور"
-            autoFocus
-          />
+        
+        <div className={styles.popupBoxContent}>
+          {message && (
+            <p className={styles.popupMessage}>{message}</p>
+          )}
+          {finalPrice && (
+            <div className={styles.priceInfo} style={{ marginTop: 0 }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '8px 0'
+              }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>السعر النهائي:</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '16px' }}>
+                  {finalPrice} EGP
+                </span>
+              </div>
+            </div>
+          )}
+          
+          <div className={styles.priceInput}>
+            <label>كلمة المرور:</label>
+            <input
+              ref={inputRef}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={handleKeyPress}
+              className={styles.modalInput}
+              placeholder="أدخل كلمة المرور"
+              autoFocus
+            />
+          </div>
         </div>
-        <div className={styles.popupBtns}>
-          <button onClick={onClose} className={styles.cancelBtn}>
-            إلغاء
-          </button>
-          <button onClick={handleConfirm} className={styles.addBtn} disabled={!password.trim()}>
-            تأكيد
-          </button>
+        
+        <div className={styles.popupBoxFooter}>
+          <div className={styles.popupBtns}>
+            <button onClick={onClose} className={styles.cancelBtn}>
+              إلغاء
+            </button>
+            <button onClick={handleConfirm} className={styles.addBtn} disabled={!password.trim()}>
+              تأكيد
+            </button>
+          </div>
         </div>
       </div>
     </div>

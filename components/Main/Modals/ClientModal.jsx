@@ -25,58 +25,49 @@ export default function ClientModal({
 
   return (
     <div className={styles.popupOverlay} onClick={onClose}>
-      <div className={styles.clientModalBox} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.clientModalHeader}>
-          <h3>إضافة بيانات العميل</h3>
-          <button 
-            className={styles.closeModalBtn} 
-            onClick={onClose}
-            disabled={isSaving}
-            title="إغلاق"
-          >
-            ✕
-          </button>
-        </div>
+      <div className={styles.popupBox} onClick={(e) => e.stopPropagation()}>
+        <h3>إضافة بيانات العميل</h3>
         
-        <div className={styles.clientModalContent}>
-          <div className={styles.clientModalField}>
-            <label className={styles.clientModalLabel}>
-              <FaUser className={styles.fieldIcon} />
+        <div className={styles.popupBoxContent}>
+          <div className={styles.priceInput}>
+            <label>
+              <FaUser style={{ marginLeft: "8px", color: "var(--main-color)" }} />
               اسم العميل
             </label>
             <input
               type="text"
               ref={nameRef}
               placeholder="اكتب اسم العميل"
-              className={styles.clientModalInput}
+              className={styles.modalInput}
               disabled={isSaving}
             />
           </div>
 
-          <div className={styles.clientModalField}>
-            <label className={styles.clientModalLabel}>
-              <FaPhone className={styles.fieldIcon} />
+          <div className={styles.priceInput}>
+            <label>
+              <FaPhone style={{ marginLeft: "8px", color: "var(--main-color)" }} />
               رقم الهاتف
             </label>
             <input
               type="text"
               ref={phoneRef}
               placeholder="اكتب رقم الهاتف"
-              className={styles.clientModalInput}
+              className={styles.modalInput}
               disabled={isSaving}
             />
           </div>
 
-          <div className={styles.clientModalField}>
-            <label className={styles.clientModalLabel}>
-              <FaUserTie className={styles.fieldIcon} />
+          <div className={styles.priceInput}>
+            <label>
+              <FaUserTie style={{ marginLeft: "8px", color: "var(--main-color)" }} />
               اسم الموظف
             </label>
             <select
               value={selectedEmployee}
               onChange={(e) => onEmployeeChange(e.target.value)}
-              className={styles.clientModalSelect}
+              className={styles.modalInput}
               disabled={isSaving}
+              style={{ cursor: "pointer" }}
             >
               <option value="">اختر الموظف</option>
               {employees.map((emp) => (
@@ -88,28 +79,30 @@ export default function ClientModal({
           </div>
         </div>
 
-        <div className={styles.clientModalFooter}>
-          <button 
-            onClick={onClose} 
-            disabled={isSaving}
-            className={styles.clientModalCancelBtn}
-          >
-            إلغاء
-          </button>
-          <button 
-            onClick={handleSave} 
-            disabled={isSaving}
-            className={styles.clientModalSaveBtn}
-          >
-            {isSaving ? (
-              <>
-                <span className={styles.spinner}></span>
-                جاري الحفظ...
-              </>
-            ) : (
-              "حفظ"
-            )}
-          </button>
+        <div className={styles.popupBoxFooter}>
+          <div className={styles.popupBtns}>
+            <button 
+              onClick={onClose} 
+              disabled={isSaving}
+              className={styles.cancelBtn}
+            >
+              إلغاء
+            </button>
+            <button 
+              onClick={handleSave} 
+              disabled={isSaving}
+              className={styles.addBtn}
+            >
+              {isSaving ? (
+                <>
+                  <span className={styles.spinner}></span>
+                  جاري الحفظ...
+                </>
+              ) : (
+                "حفظ"
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
